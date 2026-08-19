@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { mintId, toMinor, type Currency, type EmploymentType } from '../../domain/index.js'
-import { record, savePosition, saveStandingTerms, today } from '../record.js'
+import { currentUserId, record, savePosition, saveStandingTerms, today } from '../record.js'
 import CurrencyFields from './CurrencyFields.vue'
 
 const emit = defineEmits<{ close: [] }>()
@@ -43,7 +43,7 @@ async function submit(): Promise<void> {
     const positionId = mintId()
     await savePosition({
       id: positionId,
-      userId: 'local',
+      userId: currentUserId(),
       company: company.value.trim(),
       currency: currency.value,
       startDate: startDate.value,

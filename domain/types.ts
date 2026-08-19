@@ -55,6 +55,19 @@ export interface User {
   aiApiKey: string | null
 }
 
+/**
+ * A single-use code an Admin generates so somebody else can create a User (CONTEXT.md §
+ * Invite). There is no open registration — an account exists because a person deliberately
+ * made one possible. `code` is both the identity and the secret, the same way every other
+ * id in Hyperion is: nothing about redeeming it needs a separate lookup key. Consumed
+ * entirely on redemption rather than marked used — a spent code has nothing left to keep.
+ */
+export interface Invite {
+  code: string
+  createdBy: UserId
+  createdAt: IsoDate
+}
+
 /** The legal shape of a Position as of a date (CONTEXT.md § Employment Type). */
 export type EmploymentType = 'clt' | 'pj' | 'contract' | 'internship'
 

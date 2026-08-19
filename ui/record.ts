@@ -18,9 +18,9 @@ import {
   type StandingTerms,
   type StandingTermsId,
   type User,
+  type UserId,
 } from '../domain/index.js'
 import type { HyperionStore } from '../storage/port.js'
-import { CURRENT_USER_ID } from './store.js'
 
 interface RecordState {
   loading: boolean
@@ -52,16 +52,40 @@ const state = reactive<RecordState>({
 export const record: DeepReadonly<RecordState> = readonly(state)
 
 let store: HyperionStore
+let userId: UserId
 
-/** Wires the chosen adapter and loads the current User's record once. Call before mounting. */
-export async function initRecord(chosen: HyperionStore): Promise<void> {
+/**
+ * The signed-in User's id — every write below scopes itself to it. Set once, by
+ * `initRecord`, from whoever the caller has already established is signed in: the demo
+ * build's own fixed seed, or the server build's Session (`ui/main.ts`'s bootstrap either
+ * way — `record.ts` itself never guesses at identity, matching "identity lives at the
+ * boundary").
+ */
+export function currentUserId(): UserId {
+  return userId
+}
+
+/** Wires the chosen adapter and loads `forUserId`'s record once. Call before mounting. */
+export async function initRecord(chosen: HyperionStore, forUserId: UserId): Promise<void> {
   store = chosen
+  userId = forUserId
   await refresh()
+}
+
+/**
+ * The server build's own way of saying "checked, nobody is signed in" — `record.loaded`
+ * becomes true with `record.user` left unset, the same shape `refresh` already leaves it
+ * in for an id storage doesn't recognise, so `App.vue`'s loading gate renders Login/Setup
+ * rather than spinning forever on someone who was never going to have a record to load.
+ */
+export function markNotSignedIn(): void {
+  state.loading = false
+  state.loaded = true
 }
 
 async function refresh(): Promise<void> {
   state.loading = true
-  const loaded = await store.loadUserRecord(CURRENT_USER_ID)
+  const loaded = await store.loadUserRecord(userId)
   if (loaded) {
     state.user = loaded.user
     state.positions = loaded.positions
@@ -89,7 +113,7 @@ export async function logAchievement(
 ): Promise<Achievement> {
   const achievement: Achievement = {
     id: mintId(),
-    userId: CURRENT_USER_ID,
+    userId: currentUserId(),
     positionId,
     date,
     text,
@@ -101,7 +125,7 @@ export async function logAchievement(
 }
 
 export async function deleteAchievement(id: string): Promise<void> {
-  await store.deleteAchievement(CURRENT_USER_ID, id)
+  await store.deleteAchievement(currentUserId(), id)
   state.achievements = state.achievements.filter((row) => row.id !== id)
 }
 
@@ -122,7 +146,7 @@ export async function savePosition(position: Position): Promise<void> {
  * agreed to the delete.
  */
 export async function deletePosition(id: PositionId): Promise<void> {
-  await store.deletePosition(CURRENT_USER_ID, id)
+  await store.deletePosition(currentUserId(), id)
   state.positions = state.positions.filter((row) => row.id !== id)
   state.standingTerms = state.standingTerms.filter((row) => row.positionId !== id)
   state.payments = state.payments.filter((row) => row.positionId !== id)
@@ -134,7 +158,7 @@ export async function saveStandingTerms(terms: StandingTerms): Promise<void> {
 }
 
 export async function deleteStandingTerms(id: StandingTermsId): Promise<void> {
-  await store.deleteStandingTerms(CURRENT_USER_ID, id)
+  await store.deleteStandingTerms(currentUserId(), id)
   state.standingTerms = state.standingTerms.filter((row) => row.id !== id)
 }
 
@@ -144,7 +168,7 @@ export async function savePayment(payment: Payment): Promise<void> {
 }
 
 export async function deletePayment(id: PaymentId): Promise<void> {
-  await store.deletePayment(CURRENT_USER_ID, id)
+  await store.deletePayment(currentUserId(), id)
   state.payments = state.payments.filter((row) => row.id !== id)
 }
 
@@ -155,7 +179,7 @@ export async function saveApplication(application: Application): Promise<void> {
 
 /** Cascades its Application Events — nothing refuses this the way deletePosition does. */
 export async function deleteApplication(id: ApplicationId): Promise<void> {
-  await store.deleteApplication(CURRENT_USER_ID, id)
+  await store.deleteApplication(currentUserId(), id)
   state.applications = state.applications.filter((row) => row.id !== id)
   state.applicationEvents = state.applicationEvents.filter((row) => row.applicationId !== id)
 }
@@ -166,7 +190,7 @@ export async function saveApplicationEvent(event: ApplicationEvent): Promise<voi
 }
 
 export async function deleteApplicationEvent(id: ApplicationEventId): Promise<void> {
-  await store.deleteApplicationEvent(CURRENT_USER_ID, id)
+  await store.deleteApplicationEvent(currentUserId(), id)
   state.applicationEvents = state.applicationEvents.filter((row) => row.id !== id)
 }
 
@@ -200,7 +224,7 @@ export async function uploadDocument(label: string, file: File): Promise<Documen
   const bytes = new Uint8Array(await file.arrayBuffer())
   const meta: DocumentMeta = {
     id: mintId(),
-    userId: CURRENT_USER_ID,
+    userId: currentUserId(),
     label,
     filename: file.name,
     mimeType: file.type || 'application/octet-stream',
@@ -213,7 +237,7 @@ export async function uploadDocument(label: string, file: File): Promise<Documen
 }
 
 export async function readDocumentBytes(id: DocumentId): Promise<Uint8Array | undefined> {
-  return store.readDocumentBytes(CURRENT_USER_ID, id)
+  return store.readDocumentBytes(currentUserId(), id)
 }
 
 /**
@@ -225,7 +249,7 @@ export async function readDocumentBytes(id: DocumentId): Promise<Uint8Array | un
 export async function renameDocument(id: DocumentId, label: string): Promise<void> {
   const existing = state.documents.find((row) => row.id === id)
   if (!existing) return
-  const bytes = await store.readDocumentBytes(CURRENT_USER_ID, id)
+  const bytes = await store.readDocumentBytes(currentUserId(), id)
   if (!bytes) return
   const meta: DocumentMeta = { ...existing, label }
   await store.writeDocument(meta, bytes)
@@ -234,7 +258,7 @@ export async function renameDocument(id: DocumentId, label: string): Promise<voi
 
 /** Clears the reference on any Application that named it — the store's own contract. */
 export async function deleteDocument(id: DocumentId): Promise<void> {
-  await store.deleteDocument(CURRENT_USER_ID, id)
+  await store.deleteDocument(currentUserId(), id)
   state.documents = state.documents.filter((row) => row.id !== id)
   state.applications = state.applications.map((row) => (row.documentId === id ? { ...row, documentId: null } : row))
 }

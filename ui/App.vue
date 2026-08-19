@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { record } from './record.js'
+
+/** Login, Setup and Register render full-bleed, with no nav to a record they can't reach yet. */
+const route = useRoute()
+const isAuthScreen = computed(() => ['login', 'setup', 'register'].includes(String(route.name)))
 </script>
 
 <template>
-  <header class="shell">
+  <header v-if="!isAuthScreen" class="shell">
     <RouterLink to="/" class="brand">
       <img src="/hyperion-logo.svg" alt="" class="mark" />
       <span>Hyperion</span>
@@ -18,11 +23,11 @@ import { record } from './record.js'
       <RouterLink to="/documents" active-class="on">Documents</RouterLink>
       <RouterLink to="/settings" active-class="on">Settings</RouterLink>
     </nav>
-    <span class="who">{{ record.user?.displayName ?? '…' }}</span>
+    <RouterLink to="/settings" class="who">{{ record.user?.displayName ?? '…' }}</RouterLink>
   </header>
 
-  <main>
-    <RouterView v-if="record.loaded" />
+  <main :class="{ centered: isAuthScreen }">
+    <RouterView v-if="record.loaded || isAuthScreen" />
     <p v-else class="loading">Loading your record…</p>
   </main>
 </template>
@@ -81,6 +86,11 @@ nav a.on {
   font-size: 12px;
   color: var(--faint);
   font-family: var(--mono);
+  text-decoration: none;
+}
+
+.who:hover {
+  color: var(--selene);
 }
 
 main {
@@ -89,6 +99,14 @@ main {
   width: 100%;
   margin: 0 auto;
   padding: 40px 34px 96px;
+}
+
+main.centered {
+  max-width: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
 }
 
 .loading {

@@ -12,6 +12,8 @@ import type {
   DocumentId,
   DocumentMeta,
   EmploymentType,
+  Invite,
+  IsoDate,
   OfferedTerms,
   Payment,
   PaymentId,
@@ -24,6 +26,19 @@ import type {
   UserId,
 } from '../domain/index.js'
 import { StorageError, type HyperionStore, type UserRecord } from './port.js'
+
+/**
+ * A signed-in browser (CONTEXT.md has no glossary entry for this — it is pure mechanism,
+ * not something a User ever names or thinks about, unlike Invite). Lives only in
+ * `SqliteStore`, never in `domain/` or in anything sent to the client beyond the cookie
+ * itself: identity lives at the boundary (plan § Architecture).
+ */
+export interface Session {
+  token: string
+  userId: UserId
+  createdAt: IsoDate
+  expiresAt: IsoDate
+}
 
 /**
  * The schemas this database has been through, in order — the same convention as
@@ -145,6 +160,32 @@ const migrations: ((db: Database) => void)[] = [
   /** 2 — a User's chosen display period for a point-in-time salary figure. */
   (db) => {
     db.exec(`alter table users add column compensation_display text not null default 'annual'`)
+  },
+
+  /**
+   * 3 — auth (plan § Users and access): a password hash on `users` itself, not a separate
+   * table (`hyperion-plan.md`'s own "Ten tables" list has no `credentials`); Sessions and
+   * Invites as their own tables, both scoped to the User who owns them.
+   */
+  (db) => {
+    db.exec(`
+      alter table users add column password_hash text;
+
+      create table sessions (
+        token text primary key,
+        user_id text not null references users(id) on delete cascade,
+        created_at text not null,
+        expires_at text not null
+      );
+
+      create table invites (
+        code text primary key,
+        created_by text not null references users(id) on delete cascade,
+        created_at text not null
+      );
+
+      create index sessions_user on sessions(user_id);
+    `)
   },
 ]
 
@@ -285,6 +326,23 @@ function rowToApplicationEvent(row: ApplicationEventRow): ApplicationEvent {
   }
 }
 
+function rowToSession(row: SessionRow): Session {
+  return {
+    token: row.token,
+    userId: row.user_id,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+  }
+}
+
+function rowToInvite(row: InviteRow): Invite {
+  return {
+    code: row.code,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+  }
+}
+
 /** Metadata only — `bytes` is selected separately, by `readDocumentBytes` alone. */
 function rowToDocumentMeta(row: DocumentMetaRow): DocumentMeta {
   return {
@@ -306,6 +364,19 @@ interface UserRow {
   stall_threshold_days: number
   ai_api_key: string | null
   compensation_display: 'annual' | 'monthly'
+  /** Never read by `rowToUser` — `passwordHashFor` is the only method that selects this. */
+  password_hash: string | null
+}
+interface SessionRow {
+  token: string
+  user_id: string
+  created_at: string
+  expires_at: string
+}
+interface InviteRow {
+  code: string
+  created_by: string
+  created_at: string
 }
 interface PositionRow {
   id: string
@@ -495,6 +566,73 @@ export class SqliteStore implements HyperionStore {
         user.id,
       )
     if (result.changes === 0) throw new StorageError(`no User "${user.id}" is stored`)
+  }
+
+  // ── auth (plan § Users and access) ───────────────────────────────────────
+
+  /** Whether any User exists yet — closes the first-run setup window for good. */
+  async hasAnyUser(): Promise<boolean> {
+    return this.db.prepare('select 1 from users limit 1').get() !== undefined
+  }
+
+  async findUserByDisplayName(displayName: string): Promise<User | undefined> {
+    const row = this.db.prepare('select * from users where display_name = ?').get(displayName) as UserRow | undefined
+    return row ? rowToUser(row) : undefined
+  }
+
+  async allUsers(): Promise<User[]> {
+    return (this.db.prepare('select * from users').all() as UserRow[]).map(rowToUser)
+  }
+
+  async setPasswordHash(userId: UserId, passwordHash: string): Promise<void> {
+    const result = this.db.prepare('update users set password_hash = ? where id = ?').run(passwordHash, userId)
+    if (result.changes === 0) throw new StorageError(`no User "${userId}" is stored`)
+  }
+
+  async passwordHashFor(userId: UserId): Promise<string | undefined> {
+    const row = this.db.prepare('select password_hash from users where id = ?').get(userId) as
+      | { password_hash: string | null }
+      | undefined
+    return row?.password_hash ?? undefined
+  }
+
+  async createSession(session: Session): Promise<void> {
+    this.db
+      .prepare('insert into sessions (token, user_id, created_at, expires_at) values (?, ?, ?, ?)')
+      .run(session.token, session.userId, session.createdAt, session.expiresAt)
+  }
+
+  async session(token: string): Promise<Session | undefined> {
+    const row = this.db.prepare('select * from sessions where token = ?').get(token) as SessionRow | undefined
+    return row ? rowToSession(row) : undefined
+  }
+
+  async deleteSession(token: string): Promise<void> {
+    this.db.prepare('delete from sessions where token = ?').run(token)
+  }
+
+  /** Every session for a User — run after a password change, so an old session outlives it nowhere. */
+  async deleteSessionsForUser(userId: UserId): Promise<void> {
+    this.db.prepare('delete from sessions where user_id = ?').run(userId)
+  }
+
+  async createInvite(invite: Invite): Promise<void> {
+    this.db
+      .prepare('insert into invites (code, created_by, created_at) values (?, ?, ?)')
+      .run(invite.code, invite.createdBy, invite.createdAt)
+  }
+
+  async invite(code: string): Promise<Invite | undefined> {
+    const row = this.db.prepare('select * from invites where code = ?').get(code) as InviteRow | undefined
+    return row ? rowToInvite(row) : undefined
+  }
+
+  async invites(): Promise<Invite[]> {
+    return (this.db.prepare('select * from invites').all() as InviteRow[]).map(rowToInvite)
+  }
+
+  async deleteInvite(code: string): Promise<void> {
+    this.db.prepare('delete from invites where code = ?').run(code)
   }
 
   async writePosition(position: Position): Promise<void> {

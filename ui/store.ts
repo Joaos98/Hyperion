@@ -3,18 +3,30 @@ import { LocalStorageStore } from '../storage/local-storage-store.js'
 import type { HyperionStore } from '../storage/port.js'
 
 /**
- * Which data layer this build was made with — the only thing the two builds differ in
- * (ui/store.ts in Prometheus, the same convention). The self-hosted build talks to its
- * own server; the demo, and local development before a server exists, keep the record in
- * the browser and need nothing running behind them.
+ * Whether this build talks to the self-hosted server — the only thing the two builds
+ * differ in (ui/store.ts in Prometheus, the same convention), and now the one place that
+ * fact is asked, rather than three call sites independently reading the env var and
+ * risking drift.
  */
-export function chosenStore(): HyperionStore {
-  return import.meta.env['VITE_STORAGE'] === 'server' ? httpStore('/api') : new LocalStorageStore(window.localStorage)
+export function isServerBuild(): boolean {
+  return import.meta.env['VITE_STORAGE'] === 'server'
 }
 
 /**
- * Stands in for a session until auth lands (build order step 4). Every build — demo,
- * local development, and the self-hosted server's own bootstrap in `server/main.ts` —
- * agrees on this one id, so a record written by any of them is readable by the others.
+ * The self-hosted build talks to its own server, behind a real login (plan § Users and
+ * access); the demo, and local development before a server exists, keep the record in the
+ * browser and need nothing running behind them — login included, since auth is a
+ * self-hosted-server concern only.
  */
-export const CURRENT_USER_ID = 'local'
+export function chosenStore(): HyperionStore {
+  return isServerBuild() ? httpStore('/api') : new LocalStorageStore(window.localStorage)
+}
+
+/**
+ * The one User the demo/local-dev build ever seeds (`ui/main.ts`) — that build has no
+ * login, so there is never a second User to distinguish it from. The self-hosted server
+ * build never reads this: its Users come from `/api/setup` and `/api/register`, and every
+ * write after that reads the signed-in User's real id off `record.user` instead
+ * (`ui/record.ts`'s `currentUserId()`).
+ */
+export const DEMO_USER_ID = 'local'

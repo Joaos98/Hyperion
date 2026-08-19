@@ -497,13 +497,45 @@ hardcoded current User.
 **3. The application record.** `application`, `application_event`, `document`, Landing, offered terms,
 and the unused `prior_application_id`.
 
-**4. Auth and the demo seed.** `invite`, `session`, the login flow, Argon2id, the setup token. Then
-the persona is authored.
+**4. Auth and the demo seed.** `invite`, `session`, the login flow, Argon2id, the setup token
+(**shipped**, below). The demo persona is not — a separate, later task.
 
 Ten tables:
 
 `user` · `invite` · `session` · `position` · `standing_terms` · `payment` · `achievement` ·
 `document` · `application` · `application_event`
+
+### Shipped — auth (build order step 4)
+
+2026-08-19, once the gate was as cleared as the user's actual data was ever going to make it
+(single job, no open Applications, Achievements ongoing rather than a backfill). `hasAnyUser()`
+closes first-run Setup for good the moment the first User exists; every route past `setup` /
+`login` / `register` / `session` 401s without a valid, unexpired Session, resolved from a cookie
+(`HttpOnly; SameSite=Lax`, no `Secure` — `compose.yaml`'s own framing has no TLS story, so a
+`Secure` cookie would silently break the deployment shape this app actually supports). Passwords are
+Argon2id via `@node-rs/argon2` (`server/auth.ts`), never leaving `users.password_hash` for the
+client or the domain layer to see. `SqliteStore` carries the auth methods directly (`storage/sqlite-store.ts`)
+rather than a second port interface — the demo/local-dev build has no login at all
+(`ui/store.ts`'s own split) and was never going to implement one.
+
+A real gap surfaced and closed in the same pass: `writePosition` / `writeAchievement` /
+`writeApplication` / `writeDocument` used to take the client's object whole, `userId` included, with
+nothing checking it matched whoever was actually signed in — harmless with one hardcoded User,
+a real cross-tenant hole with real ones. Closed with a 403 on any mismatch. Client-side, every
+hardcoded `'local'` / `CURRENT_USER_ID` write is gone, replaced by `ui/record.ts`'s `currentUserId()`
+— the id `ui/main.ts`'s bootstrap actually resolved a Session to, not a constant.
+
+New: `LoginView` / `SetupView` / `RegisterView` (no app shell — `App.vue` hides nav on these), and a
+real `SettingsView` replacing the old stub — self password change always, an Admin section
+(generate/revoke Invites, list Users, reset a password — each reset also invalidates that User's
+Sessions) only when `record.user?.isAdmin`. Verified end to end against `npm run build:self-hosted`
+and a scratch SQLite file: first-run setup, sign out and back in, an Invite that registers a second
+User whose writes carry their own real id, Settings' Admin section invisible to that second User.
+
+Found and fixed in passing: nothing ever actually set `VITE_STORAGE=server` at build time (no
+`.env.server` existed), so `npm run build:app` had silently been shipping the browser-localStorage
+adapter instead of talking to the server at all — predates this session's changes. `.env.server` now
+sets it, which is what let the flow above be verified against the real server in the first place.
 
 ### In progress — home page redesign
 

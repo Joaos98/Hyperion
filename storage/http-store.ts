@@ -51,14 +51,15 @@ export function httpStore(base: string, send: typeof fetch = fetch): HyperionSto
   return {
     async loadUserRecord(userId: UserId): Promise<UserRecord | undefined> {
       const answer = (await call('GET', '/record')) as { record: UserRecord | null }
-      // The server answers as the signed-in User until there is a session to ask for
-      // anyone else's — passing a different `userId` here has no effect yet.
+      // The server always answers as whoever the Session cookie resolves to, never as
+      // whatever `userId` the caller asks for — identity lives at the boundary, and the
+      // boundary trusts the cookie, not this argument.
       void userId
       return answer.record ?? undefined
     },
 
     async createUser(): Promise<void> {
-      throw new StorageError('Hyperion does not create Users over HTTP yet — that is build order step 4')
+      throw new StorageError('Hyperion creates Users through /api/setup and /api/register, not this port — see ui/auth.ts')
     },
 
     async writeUser(user: User): Promise<void> {

@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { isOpen, mintId, status, type Application, type ApplicationEvent, type Stage } from '../../domain/index.js'
-import { record, saveApplication, saveApplicationEvent, today } from '../record.js'
+import { currentUserId, record, saveApplication, saveApplicationEvent, today } from '../record.js'
 
 const eventsByApplication = computed(() => {
   const map = new Map<string, ApplicationEvent[]>()
@@ -65,7 +65,7 @@ async function submit(): Promise<void> {
   }
   const application: Application = {
     id: mintId(),
-    userId: 'local',
+    userId: currentUserId(),
     company: company.value.trim(),
     title: title.value.trim(),
     source: source.value.trim() || 'Direct',

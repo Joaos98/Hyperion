@@ -41,7 +41,7 @@ describe('httpStore', () => {
     await expect(store.writeUser({ id: 'local' } as never)).rejects.toThrow(StorageError)
   })
 
-  it('refuses to create a User — that is build order step 4', async () => {
+  it('refuses to create a User — that only ever happens through /api/setup or /api/register', async () => {
     const store = httpStore('http://hyperion.local', vi.fn())
     await expect(store.createUser({ id: 'local' } as never)).rejects.toThrow(StorageError)
   })
