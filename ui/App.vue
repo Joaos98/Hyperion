@@ -3,9 +3,9 @@ import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { record } from './record.js'
 
-/** Login, Setup and Register render full-bleed, with no nav to a record they can't reach yet. */
+/** Login, Setup, Register and the demo facade render full-bleed, with no nav to a record they can't reach yet. */
 const route = useRoute()
-const isAuthScreen = computed(() => ['login', 'setup', 'register'].includes(String(route.name)))
+const isAuthScreen = computed(() => ['login', 'setup', 'register', 'demo-login'].includes(String(route.name)))
 </script>
 
 <template>

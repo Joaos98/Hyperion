@@ -2,8 +2,9 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import { router } from './router.js'
 import { initRecord, markNotSignedIn, record } from './record.js'
-import { chosenStore, DEMO_USER_ID, isServerBuild } from './store.js'
+import { chosenStore, DEMO_ENTERED_KEY, DEMO_USER_ID, isDemoMode, isServerBuild } from './store.js'
 import { whoAmI } from './auth.js'
+import { seedDemo } from './demo-seed.js'
 import './styles/base.css'
 
 async function start(): Promise<void> {
@@ -20,9 +21,20 @@ async function start(): Promise<void> {
       markNotSignedIn()
       await router.replace(setupOpen ? '/setup' : '/login')
     }
+  } else if (isDemoMode()) {
+    // The published demo: a login facade first (plan § Architecture), remembered per
+    // browser so a returning visitor's own edits aren't re-seeded over or hidden behind
+    // the facade a second time.
+    if (window.localStorage.getItem(DEMO_ENTERED_KEY)) {
+      if (!(await store.loadUserRecord(DEMO_USER_ID))) await seedDemo(store, DEMO_USER_ID)
+      await initRecord(store, DEMO_USER_ID)
+    } else {
+      markNotSignedIn()
+      await router.replace('/demo-login')
+    }
   } else {
-    // The demo build, and local development before a server exists, have no login at all
-    // — one User, seeded here on first run (`ui/store.ts`'s own split).
+    // Local development before a server exists has no login at all — one plain User,
+    // seeded here on first run (`ui/store.ts`'s own split).
     await initRecord(store, DEMO_USER_ID)
     if (!record.user) {
       await store.createUser({

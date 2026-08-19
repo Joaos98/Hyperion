@@ -497,8 +497,8 @@ hardcoded current User.
 **3. The application record.** `application`, `application_event`, `document`, Landing, offered terms,
 and the unused `prior_application_id`.
 
-**4. Auth and the demo seed.** `invite`, `session`, the login flow, Argon2id, the setup token
-(**shipped**, below). The demo persona is not — a separate, later task.
+**4. Auth and the demo seed.** `invite`, `session`, the login flow, Argon2id, the setup token, the
+demo persona (**all shipped**, below).
 
 Ten tables:
 
@@ -515,8 +515,9 @@ closes first-run Setup for good the moment the first User exists; every route pa
 `Secure` cookie would silently break the deployment shape this app actually supports). Passwords are
 Argon2id via `@node-rs/argon2` (`server/auth.ts`), never leaving `users.password_hash` for the
 client or the domain layer to see. `SqliteStore` carries the auth methods directly (`storage/sqlite-store.ts`)
-rather than a second port interface — the demo/local-dev build has no login at all
-(`ui/store.ts`'s own split) and was never going to implement one.
+rather than a second port interface — the demo/local-dev build has no *real* login at all
+(`ui/store.ts`'s own split) and was never going to implement one; the demo's own login screen
+(below) is a facade over the same `LocalStorageStore`, not a second auth system.
 
 A real gap surfaced and closed in the same pass: `writePosition` / `writeAchievement` /
 `writeApplication` / `writeDocument` used to take the client's object whole, `userId` included, with
@@ -536,6 +537,30 @@ Found and fixed in passing: nothing ever actually set `VITE_STORAGE=server` at b
 `.env.server` existed), so `npm run build:app` had silently been shipping the browser-localStorage
 adapter instead of talking to the server at all — predates this session's changes. `.env.server` now
 sets it, which is what let the flow above be verified against the real server in the first place.
+
+### Shipped — the demo persona
+
+Same day. Per § Architecture's own spec: a fictional persona in a foreign currency (EUR), not the
+real user's own — **John Doe**, Backend Engineer, three Positions over ~9 years (Fenwick Digital →
+Nordwerk → Kestrel Systems, the current one, promoted partway through), a raise within each of the
+two multi-Standing-Terms Positions, a signing bonus Payment, four Achievements with real engineering
+substance, and one in-flight Application sitting at `interview`. `EmploymentType` reads `contract`
+throughout — `clt`/`pj` are Brazil-specific (CONTEXT.md § Employment Type) and would read as an error
+next to a European company. Authored once, in `ui/demo-seed.ts`'s `seedDemo()`, entirely through the
+same `store.write*`/`createUser` calls any real use of the app already makes.
+
+The login-screen facade is its own build-mode distinction from plain local development, which the
+codebase didn't have before this: `ui/store.ts`'s new `isDemoMode()` reads Vite's own `import.meta.env.MODE`
+(`'demo'` under `vite build --mode demo`, `'development'` under plain `npm run dev`) — no new env
+var needed, unlike `isServerBuild()`. `DemoLoginView.vue` shows disabled, pre-filled fields and one
+"View the demo" button behind a banner stating plainly that it's a facade; a `hyperion.demo-entered`
+localStorage flag, set the moment that button is clicked, means a returning visitor's own edits are
+never re-seeded over or hidden behind the facade twice. Plain local dev is untouched by any of this —
+straight to the single empty seeded User it always was.
+
+Verified against a real `npm run build:demo` + static serve: the facade on first load, the full
+persona rendering correctly across Timeline/Positions/Compensation/Achievements/Applications after
+"View the demo", no re-seed or duplication on reload, and `npm run dev` unaffected throughout.
 
 ### In progress — home page redesign
 

@@ -12,8 +12,9 @@ import SettingsView from './views/SettingsView.vue'
 import LoginView from './views/LoginView.vue'
 import SetupView from './views/SetupView.vue'
 import RegisterView from './views/RegisterView.vue'
+import DemoLoginView from './views/DemoLoginView.vue'
 import { record } from './record.js'
-import { isServerBuild } from './store.js'
+import { DEMO_ENTERED_KEY, isDemoMode, isServerBuild } from './store.js'
 
 /**
  * Home is the Timeline — there is no separate dashboard (design/views.html § what these
@@ -24,9 +25,9 @@ import { isServerBuild } from './store.js'
  * shape Application already had.
  *
  * `login` / `setup` / `register` are the only routes reachable without a Session in the
- * server build (`ui/main.ts`'s bootstrap, and the guard below) — meaningless in the
- * demo/local-dev build, which has no login at all, but routed regardless so the two builds
- * share one router.
+ * server build (`ui/main.ts`'s bootstrap, and the guard below); `demo-login` is the same
+ * idea for the published demo build's own login facade. Routed regardless of build so one
+ * router serves all three.
  */
 export const router = createRouter({
   history: createWebHistory(),
@@ -44,19 +45,28 @@ export const router = createRouter({
     { path: '/login', name: 'login', component: LoginView },
     { path: '/setup', name: 'setup', component: SetupView },
     { path: '/register', name: 'register', component: RegisterView },
+    { path: '/demo-login', name: 'demo-login', component: DemoLoginView },
   ],
 })
 
-const PUBLIC_ROUTES = new Set(['login', 'setup', 'register'])
+const PUBLIC_ROUTES = new Set(['login', 'setup', 'register', 'demo-login'])
 
 /**
- * No-op in the demo/local-dev build, which has no concept of "not signed in" at all. In
- * the server build, this is the same rule `ui/main.ts`'s cold-boot bootstrap already
- * applies, kept alive for every navigation after that: no Session, no route past the
- * three public ones.
+ * No-op in plain local development, which has no concept of "not signed in" at all. In the
+ * server build, this is the same rule `ui/main.ts`'s cold-boot bootstrap already applies,
+ * kept alive for every navigation after that: no Session, no route past the three public
+ * ones. In the demo build, the equivalent is the `hyperion.demo-entered` flag: no flag, no
+ * route past the facade — a direct link into `/positions` before entering still lands there
+ * first.
  */
 router.beforeEach((to) => {
-  if (!isServerBuild()) return true
-  if (PUBLIC_ROUTES.has(String(to.name))) return true
-  return record.user ? true : '/login'
+  if (isServerBuild()) {
+    if (PUBLIC_ROUTES.has(String(to.name))) return true
+    return record.user ? true : '/login'
+  }
+  if (isDemoMode()) {
+    if (to.name === 'demo-login') return true
+    return window.localStorage.getItem(DEMO_ENTERED_KEY) ? true : '/demo-login'
+  }
+  return true
 })
