@@ -587,7 +587,7 @@ to this app's otherwise-universal "add or delete, never edit" convention for dat
 end-to-end in-browser: add, edit-in-place with no duplication, a second Round of a different kind on
 the same Application, and delete.
 
-### In progress — home page redesign
+### Shipped — home page redesign
 
 Started 2026-08-19, from the complaint that the home Timeline "feels too empty" next to
 `design/views.html`'s mockup. Explored via `/design` (a Claude Design canvas, separate from the
@@ -668,9 +668,23 @@ cleanly as the model expects.
 
 ### After the gate
 
-The rest of the AI layer, currency conversion, equity, and the data-export feature never built (§
-Architecture: "exporting your data from Settings is the other half" of the backup story). In
-whatever order the need appears.
+The rest of the AI layer, currency conversion, and equity — shipped, below, is the data-export
+feature that used to sit in this list (§ Architecture: "exporting your data from Settings is the
+other half" of the backup story). The rest in whatever order the need appears.
+
+### Shipped — data export
+
+2026-08-19. `ui/zip.ts` is a small, dependency-free ZIP writer — stored (uncompressed) entries
+only, no DEFLATE — since the payload is career-record JSON plus a handful of résumé-sized files,
+not worth a dependency package.json otherwise carries none of. `ui/export.ts`'s `buildExport()`
+assembles `data.json` (every row the signed-in User has, Documents' metadata included) plus each
+Document's actual bytes under `documents/`, reading only through `record.ts`'s own state and
+`readDocumentBytes` — so it runs identically over every storage adapter, no new server route or
+port method needed. `ui/views/SettingsView.vue` gained a "Your data" panel, above the
+server-build-only sections so every build (self-hosted, demo, plain local dev) gets a way out —
+the browser-storage builds have no `cp hyperion.db` equivalent at all, so the need is if anything
+sharper there. Verified in-browser: the zip's local file headers, CRC-32s and end-of-central-directory
+record all check out, and `data.json` round-trips the real record correctly.
 
 ### When a search starts
 

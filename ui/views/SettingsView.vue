@@ -11,11 +11,36 @@ import {
   logout,
   resetUserPassword,
 } from '../auth.js'
-import { record } from '../record.js'
+import { buildExport } from '../export.js'
+import { record, today } from '../record.js'
 import { isServerBuild } from '../store.js'
 
 const serverBuild = isServerBuild()
 const isAdmin = record.user?.isAdmin ?? false
+
+// ── your data ──────────────────────────────────────────────────────────────
+const exporting = ref(false)
+const exportError = ref('')
+
+async function exportData(): Promise<void> {
+  exportError.value = ''
+  exporting.value = true
+  try {
+    const zip = await buildExport()
+    // Uint8Array's ArrayBufferLike generic is broader than BlobPart's own ArrayBuffer-only.
+    const blob = new Blob([zip as BlobPart], { type: 'application/zip' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `hyperion-export-${today()}.zip`
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch (cause) {
+    exportError.value = String(cause)
+  } finally {
+    exporting.value = false
+  }
+}
 
 // ── your account ──────────────────────────────────────────────────────────
 const currentPassword = ref('')
@@ -135,6 +160,21 @@ onMounted(() => {
   <div class="board">
     <h1>Settings</h1>
 
+    <section class="panel">
+      <h3>Your data</h3>
+      <p class="note">
+        A zip of everything Hyperion holds for you — every row as JSON, plus your documents'
+        actual files. The same way <code>cp hyperion.db</code> is a complete self-hosted
+        backup, this is the portable version: open it anywhere, no server required.
+      </p>
+      <p v-if="exportError" class="error">{{ exportError }}</p>
+      <div class="actions">
+        <button class="ghost" :disabled="exporting" @click="exportData">
+          {{ exporting ? 'Exporting…' : 'Export your data' }}
+        </button>
+      </div>
+    </section>
+
     <div v-if="!serverBuild" class="panel dashed">
       <p><b>Nothing here to configure.</b></p>
       <p class="note">
@@ -243,11 +283,20 @@ h1 {
   color: var(--muted);
 }
 
-.panel.dashed .note {
+.note {
   color: var(--faint);
   font-size: 12.5px;
-  margin-top: 8px;
+  margin: 0 0 14px;
   line-height: 1.5;
+}
+
+.note code {
+  font-family: var(--mono);
+  font-size: 0.95em;
+}
+
+.panel.dashed .note {
+  margin: 8px 0 0;
 }
 
 h3 {
