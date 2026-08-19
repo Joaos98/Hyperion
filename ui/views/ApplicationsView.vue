@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { daysBetween, isOpen, mintId, priorApplicationFor, status, type Application, type ApplicationEvent, type Stage } from '../../domain/index.js'
+import { daysBetween, isOpen, isStalled, mintId, priorApplicationFor, status, type Application, type ApplicationEvent, type Stage } from '../../domain/index.js'
 import { currentUserId, record, saveApplication, saveApplicationEvent, today } from '../record.js'
 
 const route = useRoute()
@@ -27,6 +27,15 @@ const closed = computed(() =>
   (record.applications as Application[])
     .filter((application) => !isOpen(eventsByApplication.value.get(application.id) ?? []))
     .sort((a, b) => latestDate(b) - latestDate(a)),
+)
+
+// ── Stall detection and the attention view (CONTEXT.md § Stalled) ──────────
+// Drawn from the Open set, and only the Open set — a Terminal Application has nothing left
+// to have gone quiet. Reported as a queue to look at, not an accusation: silence is normal
+// in a job search, and the threshold is a per-User setting, tuned against real experience.
+const stallThresholdDays = computed(() => record.user?.stallThresholdDays ?? 21)
+const needsAttention = computed(() =>
+  open.value.filter((application) => isStalled(eventsByApplication.value.get(application.id) ?? [], today(), stallThresholdDays.value)),
 )
 
 function latestDate(application: Application): number {
@@ -192,6 +201,20 @@ onMounted(() => {
     </div>
 
     <template v-else>
+      <section v-if="needsAttention.length > 0" class="attention">
+        <h3>Needs attention <span class="count">{{ needsAttention.length }}</span></h3>
+        <RouterLink v-for="application in needsAttention" :key="application.id" :to="`/applications/${application.id}`" class="row">
+          <div class="l">
+            {{ application.title }} <span class="co">· {{ application.company }}</span>
+            <small>{{ application.source }}</small>
+          </div>
+          <div class="r">
+            <span class="chip" :class="chipClass(statusOf(application))">{{ statusOf(application)?.toUpperCase() }}</span>
+            <span class="stalled">quiet {{ daysAgo(application) }}d</span>
+          </div>
+        </RouterLink>
+      </section>
+
       <section v-if="open.length > 0">
         <h3>Open <span class="count">{{ open.length }}</span></h3>
         <RouterLink v-for="application in open" :key="application.id" :to="`/applications/${application.id}`" class="row">
@@ -417,6 +440,28 @@ h3 {
   font-family: var(--mono);
   font-size: 11px;
   color: var(--faint);
+}
+
+.attention {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  padding: 4px 14px;
+  margin-bottom: 28px;
+}
+
+.attention h3 {
+  margin-top: 10px;
+}
+
+.stalled {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--muted);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 2px 7px;
+  white-space: nowrap;
 }
 
 .chip {

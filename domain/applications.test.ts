@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DomainError } from './errors.js'
-import { eventsNewestFirst, isOpen, isTerminalStage, landApplication, priorApplicationFor, status } from './applications.js'
+import { eventsNewestFirst, isOpen, isStalled, isTerminalStage, landApplication, priorApplicationFor, status } from './applications.js'
 import type { Currency } from './money.js'
 import type { Application, ApplicationEvent } from './types.js'
 
@@ -66,6 +66,37 @@ describe('isOpen', () => {
 
   it('is false with no Events at all', () => {
     expect(isOpen([])).toBe(false)
+  })
+})
+
+describe('isStalled', () => {
+  it('is false while inside the Stall Threshold', () => {
+    const events = [event('app-1', 'applied', '2026-08-01')]
+    expect(isStalled(events, '2026-08-20', 21)).toBe(false)
+  })
+
+  it('is false exactly at the Stall Threshold — only older than it counts', () => {
+    const events = [event('app-1', 'applied', '2026-08-01')]
+    expect(isStalled(events, '2026-08-22', 21)).toBe(false)
+  })
+
+  it('is true once past the Stall Threshold', () => {
+    const events = [event('app-1', 'applied', '2026-08-01')]
+    expect(isStalled(events, '2026-08-23', 21)).toBe(true)
+  })
+
+  it('is false once the Application reaches a Terminal Stage, however old', () => {
+    const events = [event('app-1', 'applied', '2026-01-01'), event('app-1', 'rejected', '2026-01-05')]
+    expect(isStalled(events, '2026-08-20', 21)).toBe(false)
+  })
+
+  it('is false with no Events at all', () => {
+    expect(isStalled([], '2026-08-20', 21)).toBe(false)
+  })
+
+  it('reads the most recent Event, not the first', () => {
+    const events = [event('app-1', 'applied', '2026-01-01'), event('app-1', 'screen', '2026-08-15')]
+    expect(isStalled(events, '2026-08-20', 21)).toBe(false)
   })
 })
 

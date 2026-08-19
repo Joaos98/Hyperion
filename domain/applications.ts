@@ -1,5 +1,5 @@
 import { DomainError } from './errors.js'
-import type { IsoDate } from './date.js'
+import { daysBetween, type IsoDate } from './date.js'
 import type {
   Application,
   ApplicationEvent,
@@ -62,6 +62,18 @@ export function status(events: readonly ApplicationEvent[]): Stage | undefined {
 export function isOpen(events: readonly ApplicationEvent[]): boolean {
   const current = status(events)
   return current !== undefined && !isTerminalStage(current)
+}
+
+/**
+ * Whether an Open Application counts as Stalled (CONTEXT.md § Stalled): its most recent
+ * Event is older than `stallThresholdDays`. Always false once an Application reaches a
+ * Terminal Stage — there is nothing left to have gone quiet. Reported neutrally, a queue to
+ * look at rather than an accusation: silence is the normal case in a job search.
+ */
+export function isStalled(events: readonly ApplicationEvent[], today: IsoDate, stallThresholdDays: number): boolean {
+  if (!isOpen(events)) return false
+  const latest = eventsNewestFirst(events)[0]!.date
+  return daysBetween(latest, today) > stallThresholdDays
 }
 
 /**

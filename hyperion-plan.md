@@ -262,7 +262,9 @@ applications go quiet — so it waits until there is a search to watch.
   actually waiting on a live pipeline to tune against — **shipped**, below, once real Applications
   existed to have history with.
 - **The funnel**, response rates and time-to-response
-- **Stall detection** and the attention view
+- **Stall detection** and the attention view — **shipped**, below. The one item in this section that
+  really did need to wait: the mechanism needed no tuning to build, but the threshold's default
+  (21 days) is only as good as a guess until watched against real applications going quiet.
 
 ### 8. Currency conversion
 
@@ -714,10 +716,27 @@ inverting it. Invisible until an Application first had two same-day Events, whic
 manual testing happened to produce. Fixed by reading `events.value[0]?.stage` directly instead of
 re-sorting; `status()` gained a doc comment warning against ever passing it pre-sorted input again.
 
+### Shipped — Stall detection and the attention view
+
+2026-08-19. `domain/applications.ts`'s `isStalled(events, today, stallThresholdDays)` (CONTEXT.md §
+Stalled): false for anything already Terminal — nothing left to have gone quiet — otherwise true once
+the most recent Event is older than the threshold. The one item in this list that really was waiting
+on something: not the mechanism, which needed no real data to build, but the threshold's own default
+(21 days, set at account creation and never surfaced since) — only worth trusting once tuned against
+applications actually going quiet, so Settings gained a plain number input for it
+(`User.stallThresholdDays`, via the existing `saveUser`).
+
+The attention view turned out not to want a new route: "there is no separate dashboard" already ruled
+that out (`ui/router.ts`'s own comment), and `ApplicationsView.vue` already had a natural home for it.
+A **Needs attention** section, drawn from the Open set and shown above Open itself, lists whichever of
+those are currently Stalled — the same rows still appear in Open too, since attention is a callout, not
+a replacement for the ordinary list. Reported neutrally throughout, per CONTEXT.md: a "quiet 25d" chip,
+not a warning color or an alarm.
+
 ### When a search starts
 
-Rounds, prior-application awareness, the funnel, response rates, stall detection, the attention
-view. Built while watching real applications, which is the only way they would be right.
+Rounds, prior-application awareness and stall detection are shipped, above. The funnel and response
+rates remain — built while watching real applications, which is the only way they would be right.
 
 ### Decide after real use
 

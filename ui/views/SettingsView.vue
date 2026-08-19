@@ -12,11 +12,25 @@ import {
   resetUserPassword,
 } from '../auth.js'
 import { buildExport } from '../export.js'
-import { record, today } from '../record.js'
+import { record, saveUser, today } from '../record.js'
 import { isServerBuild } from '../store.js'
 
 const serverBuild = isServerBuild()
 const isAdmin = record.user?.isAdmin ?? false
+
+// ── stall threshold (CONTEXT.md § Stall Threshold) ──────────────────────────
+const stallThresholdDays = ref(record.user?.stallThresholdDays ?? 21)
+const savingThreshold = ref(false)
+
+async function saveStallThreshold(): Promise<void> {
+  if (!record.user || stallThresholdDays.value < 1) return
+  savingThreshold.value = true
+  try {
+    await saveUser({ ...record.user, stallThresholdDays: stallThresholdDays.value })
+  } finally {
+    savingThreshold.value = false
+  }
+}
 
 // ── your data ──────────────────────────────────────────────────────────────
 const exporting = ref(false)
@@ -172,6 +186,19 @@ onMounted(() => {
         <button class="ghost" :disabled="exporting" @click="exportData">
           {{ exporting ? 'Exporting…' : 'Export your data' }}
         </button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>Stall Threshold</h3>
+      <p class="note">
+        Days of silence before an Open Application shows up under "Needs attention" on the
+        Applications page. Silence is normal in a job search — this just sets where the line
+        sits for you, and it's worth tuning once you've watched a few go quiet.
+      </p>
+      <div class="actions">
+        <input v-model.number="stallThresholdDays" type="number" min="1" class="num" @change="saveStallThreshold" />
+        <span class="unit">days{{ savingThreshold ? '…' : '' }}</span>
       </div>
     </section>
 
@@ -393,6 +420,23 @@ h3 {
   display: flex;
   gap: 10px;
   margin-top: 2px;
+  align-items: center;
+}
+
+.num {
+  background: var(--page);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-control);
+  padding: 7px 10px;
+  color: var(--text);
+  font-size: 13.5px;
+  font-family: var(--sans);
+  width: 72px;
+}
+
+.unit {
+  font-size: 12.5px;
+  color: var(--muted);
 }
 
 button.primary {
