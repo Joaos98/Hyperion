@@ -1,0 +1,15 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1240, "h": 1500 },
+    { "file": "Modal.dc.html", "x": 1320, "y": 0, "w": 640, "h": 620 },
+    { "file": "DayOne.dc.html", "x": 2040, "y": 0, "w": 1240, "h": 720 },
+    { "file": "OptionB.dc.html", "x": 3360, "y": 0, "w": 1240, "h": 1560 }
+  ],
+  "annotations": [
+    { "id": "label-main", "x": 0, "y": -70, "w": 500, "text": "Chosen direction — sidebar\nLog achievement is now a small card above Current Position, opening the modal on the right. Current Position adds Stay Premium." },
+    { "id": "label-modal", "x": 1320, "y": -70, "w": 500, "text": "Log-achievement modal\nPosition, Date, the note itself, and an optional Impact field — the fields Achievement already has, finally with a place to fill them in." },
+    { "id": "label-dayone", "x": 2040, "y": -70, "w": 500, "text": "Day one — near-empty state" },
+    { "id": "label-optionb", "x": 3360, "y": -70, "w": 500, "text": "Option B (not chosen) — header strip, kept for reference" }
+  ],
+  "launch": { "view": "canvas" }
+}

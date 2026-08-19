@@ -1,0 +1,29 @@
+# Self-hosting Hyperion should be an evening, not a project.
+#
+#   docker compose up -d
+#
+# Then open http://localhost:8080. The first account created becomes the Admin — after
+# that, registration is by invite only. Keep this off the public internet; auth here
+# separates the people sharing a deployment from each other, not from the internet.
+#
+# 8080 is a popular port and something else on the machine may already have it, in
+# which case the page will not load and the logs here will look perfectly healthy:
+#
+#   HYPERION_PORT=8090 docker compose up -d
+#
+# `up -d` on its own never rebuilds an image that already exists — after pulling or
+# making a change, add --build or the container keeps running whatever it was last
+# built from, silently:
+#
+#   docker compose up -d --build
+services:
+  hyperion:
+    build: .
+    ports:
+      - '${HYPERION_PORT:-8080}:8080'
+    volumes:
+      - records:/data
+    restart: unless-stopped
+
+volumes:
+  records:

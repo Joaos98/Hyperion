@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;450;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --page:#12141A; --surface:#1B1E27; --hairline:#2A2E3A; --text:#EDEFF4;
+      --muted:#8C93A6; --faint:#5C6375;
+      --selene:#9D7BE0;
+      --radius-card:12px; --radius-control:8px;
+      --sans:'IBM Plex Sans', system-ui, sans-serif;
+      --mono:'IBM Plex Mono', ui-monospace, monospace;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--page);color:var(--text);font-family:var(--sans);
+         font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+
+    .backdrop{position:absolute;inset:0;background:rgba(9,10,13,0.72);
+              display:flex;align-items:center;justify-content:center}
+
+    .dialog{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-card);
+            width:440px;padding:24px 26px;box-shadow:0 24px 60px rgba(0,0,0,0.45)}
+    .dialog-h{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+    .dialog-h h3{font-size:16px;font-weight:600;margin:0;letter-spacing:-.01em}
+    .close{background:transparent;border:none;color:var(--faint);font-size:18px;line-height:1;padding:0}
+    .dialog-sub{font-size:12.5px;color:var(--faint);margin:0 0 20px}
+
+    .form{display:flex;flex-direction:column;gap:14px}
+    .form label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--muted)}
+    .form input,.form select,.form textarea{background:var(--page);border:1px solid var(--hairline);
+      border-radius:var(--radius-control);padding:9px 11px;color:var(--text);font-size:13.5px;
+      font-family:var(--sans)}
+    .form textarea{resize:vertical;min-height:64px;line-height:1.5}
+    .form .row2{display:grid;grid-template-columns:1fr 150px;gap:12px}
+    .form .opt{color:var(--faint);font-weight:400}
+
+    .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:6px}
+    button.primary{background:var(--selene);color:var(--page);border:none;border-radius:var(--radius-control);
+      padding:8px 18px;font-size:13px;font-weight:500}
+    button.ghost{background:transparent;border:1px solid var(--hairline);color:var(--muted);
+      border-radius:var(--radius-control);padding:8px 16px;font-size:13px}
+  </style>
+</helmet>
+
+<div class="backdrop">
+  <div class="dialog">
+    <div class="dialog-h"><h3>Log an achievement</h3><button class="close">&times;</button></div>
+    <p class="dialog-sub">One entry, whenever something is worth remembering later.</p>
+
+    <div class="form">
+      <div class="row2">
+        <label>Position
+          <select>
+            <option>Senior Backend Engineer · Kestrel Systems</option>
+          </select>
+        </label>
+        <label>Date
+          <input type="date" value="2026-08-19">
+        </label>
+      </div>
+
+      <label>What did you ship?
+        <textarea placeholder="One line is enough — the specifics come later if you need them.">Rewrote the settlement reconciliation job after the December incident.</textarea>
+      </label>
+
+      <label>Impact <span class="opt">— optional</span>
+        <input type="text" placeholder="e.g., cut the nightly run from 90 minutes to under 6" value="Nightly run: 90min → 6min">
+      </label>
+
+      <div class="actions">
+        <button class="ghost">Cancel</button>
+        <button class="primary">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

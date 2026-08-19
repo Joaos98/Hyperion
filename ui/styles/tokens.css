@@ -1,0 +1,35 @@
+/*
+ * Hyperion's design tokens, as settled in design/identity.html and design/accents.html.
+ * Page/surface/hairline/text/muted are inherited from the Saturn family — Prometheus and
+ * Atlas landed on nearly the same values independently, so these are not this app's to
+ * choose. --selene is Hyperion's own: the accent, and the colour of the logo mark.
+ */
+:root {
+  --page: #12141a;
+  --surface: #1b1e27;
+  --hairline: #2a2e3a;
+  --text: #edeff4;
+  --muted: #8c93a6;
+  --faint: #5c6375;
+
+  /* The present tense only — current position, today, the active view. Never decoration. */
+  --selene: #9d7be0;
+  --selene-dim: #4b456d;
+  --selene-wash: rgba(157, 123, 224, 0.12);
+
+  /* Deltas and outcomes. Nothing else reaches for these. */
+  --rise: #7fb894;
+  --fall: #c08a8a;
+  --held: #333949;
+
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --gap: 16px;
+  --pad: 20px;
+
+  --sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --serif: 'IBM Plex Serif', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  color-scheme: dark;
+}

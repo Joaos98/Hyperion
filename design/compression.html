@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hyperion — timeline compression</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;450;600&family=IBM+Plex+Serif:wght@400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#12141A; --surface:#1B1E27; --hairline:#2A2E3A;
+  --text:#EDEFF4; --muted:#8C93A6; --faint:#5C6375;
+  --selene:#9D7BE0; --rise:#7FB894; --fall:#C08A8A;
+  --held:#333949;
+  --sans:'IBM Plex Sans',system-ui,sans-serif;
+  --serif:'IBM Plex Serif',Georgia,serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font-family:var(--sans);
+     font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:52px 38px 96px}
+h1{font-size:25px;font-weight:600;letter-spacing:-.02em;margin:0 0 8px}
+h2{font-size:12px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;
+   color:var(--faint);margin:0 0 18px}
+.lede{color:var(--muted);max-width:70ch;margin:0 0 6px}
+.lede b{color:var(--text);font-weight:450}
+.note{color:var(--muted);font-size:13.5px;max-width:66ch}
+.note b{color:var(--text);font-weight:450}
+code{font-family:var(--mono);font-size:12.5px;color:var(--selene)}
+section{margin-top:56px;padding-top:30px;border-top:1px solid var(--hairline)}
+
+.rule-card{background:var(--surface);border:1px solid var(--hairline);border-radius:12px;
+           padding:20px 24px;margin:22px 0 0}
+.rule-card h3{font-size:14px;margin:0 0 10px;font-weight:600}
+.rule-card ol{margin:0;padding-left:20px;color:var(--muted);font-size:13.5px}
+.rule-card li{margin-bottom:9px}
+.rule-card li b{color:var(--text);font-weight:500}
+.rule-card li:last-child{margin-bottom:0}
+
+.cols{display:grid;grid-template-columns:230px 1fr;gap:36px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--hairline);border-radius:12px;padding:20px 22px}
+.panel-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px}
+.panel-h h3{font-size:14px;font-weight:600;margin:0}
+.panel-h .sub{font-size:11px;color:var(--faint);font-family:var(--mono)}
+
+/* ── scale strip (the problem) ─────────────────────────────────────── */
+.strip{display:flex;gap:12px;align-items:stretch;height:430px}
+.strip .axis{width:44px;position:relative;font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+.strip .axis span{position:absolute;right:0;transform:translateY(-50%)}
+.strip .bar{width:9px;border-radius:2px;background:var(--hairline);position:relative}
+.seg{position:absolute;left:0;right:0;border-radius:2px;background:var(--held)}
+.seg.now{background:linear-gradient(180deg,var(--selene),#4B456D)}
+.dot{position:absolute;left:50%;width:5px;height:5px;border-radius:50%;
+     transform:translate(-50%,-50%);background:var(--muted)}
+.strip .legend{flex:1;font-size:12px;color:var(--faint);align-self:center;line-height:1.6}
+.strip .legend b{color:var(--fall);font-weight:500}
+
+/* ── the pillar ────────────────────────────────────────────────────── */
+.pillar{display:grid;grid-template-columns:56px 32px 1fr;column-gap:4px}
+.yr{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:right;
+    padding:3px 10px 0 0;white-space:nowrap}
+.yr.now{color:var(--selene)}
+.rail{position:relative;min-height:26px}
+.rail::before{content:'';position:absolute;left:50%;top:0;bottom:0;transform:translateX(-50%);
+              width:1px;background:var(--hairline)}
+.rail.held::before{width:7px;border-radius:1px;background:var(--held)}
+.rail.held.current::before{background:linear-gradient(180deg,var(--selene),#4B456D)}
+.rail.fold::before{background:repeating-linear-gradient(180deg,var(--held) 0 3px,transparent 3px 8px)}
+.rail.fold.open::before{background:repeating-linear-gradient(180deg,var(--hairline) 0 3px,transparent 3px 8px);width:1px}
+.inset{border:1px solid var(--hairline);border-radius:8px;background:rgba(0,0,0,.22);
+       padding:10px 12px;margin:2px 0 6px;display:flex;gap:10px}
+.inset .minirail{width:3px;border-radius:2px;background:#4a5262;flex:none}
+.inset .tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--faint);
+            text-transform:uppercase;display:block;margin-bottom:4px}
+.inset .nm{font-size:13px;font-weight:600}
+.mk{position:absolute;left:50%;top:9px;width:9px;height:9px;border-radius:50%;
+    transform:translateX(-50%);background:var(--page);border:2px solid var(--muted);z-index:2}
+.mk.up{border-color:var(--rise);background:var(--rise)}
+.mk.note{width:7px;height:7px;top:11px;border-color:var(--faint)}
+.mk.end{border-color:var(--fall)}
+
+.bd{padding:0 0 20px 12px}
+.bd.tight{padding-bottom:10px}
+.role{font-size:14px;font-weight:600;letter-spacing:-.005em}
+.co{color:var(--muted);font-weight:400}
+.terms{font-family:var(--mono);font-size:11.5px;color:var(--muted);
+       font-variant-numeric:tabular-nums;margin-top:3px}
+.terms b{color:var(--text);font-weight:500}
+.terms .up{color:var(--rise)}
+.ev{font-size:12.5px;color:var(--muted)}
+.ev b{color:var(--text);font-weight:500}
+.ach{font-family:var(--serif);font-size:13.5px;color:#C6CAD4;line-height:1.5;margin:0;max-width:46ch}
+.dur{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.05em;
+     color:var(--page);background:var(--selene);border-radius:4px;padding:1px 6px;
+     margin-left:7px;vertical-align:1.5px;font-weight:500}
+.dur.past{background:transparent;color:var(--faint);border:1px solid var(--hairline)}
+
+/* the fold */
+.folded{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--faint);
+        padding:3px 0}
+.folded .txt{font-family:var(--mono);font-size:11.5px}
+.folded .txt em{font-style:normal;color:var(--muted)}
+.folded button{font-family:var(--mono);font-size:10.5px;color:var(--muted);background:transparent;
+        border:1px solid var(--hairline);border-radius:5px;padding:2px 8px;cursor:pointer}
+.folded button:hover{color:var(--selene);border-color:var(--selene)}
+
+.floorbox{display:flex;gap:26px;margin-top:6px}
+.floorbox > div{flex:1}
+.tagline{font-size:11px;font-family:var(--mono);color:var(--faint);margin-bottom:10px;
+         letter-spacing:.04em}
+.bad{color:var(--fall)}
+.good{color:var(--rise)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Timeline compression</h1>
+  <p class="lede">A career is twelve to forty years long and almost entirely uneventful. Mapping
+  time to pixels honestly produces a very tall, very empty column where the interesting part is a
+  thin band at the top. <b>The rule is not a ruler</b> — it carries continuity and state, while
+  exact duration is carried in text where it can be read precisely.</p>
+
+  <section>
+    <h2>The problem, to scale</h2>
+    <div class="cols">
+      <div class="panel">
+        <div class="panel-h"><h3>Proportional</h3><div class="sub">12y @ 1:12</div></div>
+        <div class="strip">
+          <div class="axis">
+            <span style="top:2%">2026</span><span style="top:24%">2023</span>
+            <span style="top:46%">2020</span><span style="top:68%">2017</span>
+            <span style="top:96%">2014</span>
+          </div>
+          <div class="bar">
+            <div class="seg now" style="top:0;height:43%"></div>
+            <div class="seg" style="top:46%;height:26%"></div>
+            <div class="seg" style="top:75%;height:25%"></div>
+            <div class="dot" style="top:3%"></div><div class="dot" style="top:6%"></div>
+            <div class="dot" style="top:8%"></div><div class="dot" style="top:11%"></div>
+            <div class="dot" style="top:13%"></div><div class="dot" style="top:16%"></div>
+            <div class="dot" style="top:19%"></div><div class="dot" style="top:24%"></div>
+            <div class="dot" style="top:31%"></div><div class="dot" style="top:38%"></div>
+            <div class="dot" style="top:52%"></div><div class="dot" style="top:63%"></div>
+            <div class="dot" style="top:79%"></div><div class="dot" style="top:93%"></div>
+          </div>
+          <div class="legend">Every dot is an event.<br><br>
+            <b>Two thirds of the column is empty</b>, the last eighteen months hold half the
+            content, and a two-month contract would be four pixels tall — too short to hold its
+            own name.</div>
+        </div>
+      </div>
+      <div>
+        <div class="rule-card">
+          <h3>The rule</h3>
+          <ol>
+            <li><b>Stretches that hold events render to scale</b>, with a floor: no position
+              shorter than one line of type, whatever its real duration.</li>
+            <li><b>Stretches with no events, longer than three months, fold</b> into a single
+              marked row that states exactly what it hid — <code>2y 4m · nothing logged</code>.
+              One click opens it.</li>
+            <li><b>Nothing is ever capped or squashed silently.</b> Time is either shown to scale
+              or explicitly folded and labelled, the same rule the app already applies to
+              Converted amounts.</li>
+            <li><b>A fold never breaks the rule.</b> Inside a position it stays thick — you were
+              still employed through the quiet years. Between positions it stays hairline.
+              Continuity is the whole idea of the Pillar and compression must not cost it.</li>
+            <li><b>Year markers survive folds</b>, so orientation never depends on what is
+              currently open.</li>
+          </ol>
+        </div>
+        <p class="note" style="margin-top:18px">This is the diff-fold idiom — <em>47 unchanged
+        lines</em> — which is honest, expandable, reversible, and already fluent to anyone who
+        reads code. It needs no continuous distortion, no fisheye maths, and no zoom mode.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Folded — the same twelve years</h2>
+    <div class="cols" style="grid-template-columns:1fr 1fr;gap:32px">
+
+      <div class="panel">
+        <div class="panel-h"><h3>Default</h3><div class="sub">everything folded</div></div>
+        <div class="pillar">
+          <div class="yr now">NOW</div><div class="rail held current"></div>
+          <div class="bd"><div class="role">Senior Engineer <span class="co">· Kestrel</span><span class="dur">5Y 3M</span></div>
+            <div class="terms">€91,500 base · €9,000 target · CLT</div></div>
+
+          <div class="yr">2026 Mar</div><div class="rail held current"><div class="mk up"></div></div>
+          <div class="bd"><div class="ev"><b>Promotion</b> — Engineer → Senior
+            <span class="terms" style="display:inline">€78,000 → <b>€91,500</b> <span class="up">+17.3%</span></span></div></div>
+
+          <div class="yr">2026 Feb</div><div class="rail held current"><div class="mk note"></div></div>
+          <div class="bd"><p class="ach">Rewrote the reconciliation job after the December
+            incident. Nightly run down from 90 minutes to under 6.</p></div>
+
+          <div class="yr">2025</div><div class="rail held current fold"></div>
+          <div class="bd tight"><div class="folded"><span class="txt">8m · <em>nothing logged</em></span>
+            <button>open</button></div></div>
+
+          <div class="yr">2024 Nov</div><div class="rail held current"><div class="mk up"></div></div>
+          <div class="bd"><div class="ev"><b>Raise</b>
+            <span class="terms" style="display:inline">€71,000 → <b>€78,000</b> <span class="up">+9.9%</span></span></div></div>
+
+          <div class="yr">2023 Jun</div><div class="rail held current"></div>
+          <div class="bd"><div class="inset"><div class="minirail"></div>
+            <div><span class="tag">alongside · 2 mo</span>
+              <div class="nm">Halden &amp; Co</div>
+              <div class="terms">€6,000/mo · PJ · contract</div></div></div></div>
+
+          <div class="yr">2021 May</div><div class="rail held current"><div class="mk"></div></div>
+          <div class="bd"><div class="ev"><b>Started</b> at Kestrel Systems</div>
+            <div class="terms">€71,000 base · landed from application</div></div>
+
+          <div class="yr">&nbsp;</div><div class="rail"></div>
+          <div class="bd tight"><div class="folded"><span class="txt">4m · <em>no position</em></span></div></div>
+
+          <div class="yr">2018–21</div><div class="rail held fold"></div>
+          <div class="bd tight"><div class="folded"><span class="txt">Engineer · Nordwerk <span class="dur past">3Y 2M</span></span>
+            <button>open</button></div></div>
+
+          <div class="yr">2014–17</div><div class="rail held fold"></div>
+          <div class="bd tight"><div class="folded"><span class="txt">Junior Developer · Meridian Labs <span class="dur past">3Y 3M</span></span>
+            <button>open</button></div></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <div class="panel-h"><h3>One fold opened</h3><div class="sub">2018–21 · Nordwerk</div></div>
+          <div class="pillar">
+            <div class="yr">2021 Mar</div><div class="rail held"><div class="mk end"></div></div>
+            <div class="bd"><div class="role">Engineer <span class="co">· Nordwerk</span><span class="dur past">3Y 2M</span></div>
+              <div class="terms">ended — resigned · €64,000 final</div></div>
+
+            <div class="yr">2020</div><div class="rail held fold open"></div>
+            <div class="bd tight"><div class="folded"><span class="txt">1y 1m · <em>nothing logged</em></span>
+              <button>open</button></div></div>
+
+            <div class="yr">2019 Aug</div><div class="rail held"><div class="mk up"></div></div>
+            <div class="bd"><div class="ev"><b>Raise</b>
+              <span class="terms" style="display:inline">€58,000 → <b>€64,000</b> <span class="up">+10.3%</span></span></div></div>
+
+            <div class="yr">2019 Feb</div><div class="rail held"><div class="mk note"></div></div>
+            <div class="bd"><p class="ach">Took over the payments integration when Marta left.
+              Shipped the SEPA migration alone.</p></div>
+
+            <div class="yr">2018 Jan</div><div class="rail held"><div class="mk"></div></div>
+            <div class="bd"><div class="ev"><b>Started</b> at Nordwerk</div>
+              <div class="terms">€52,000 base</div></div>
+          </div>
+          <p class="note" style="margin-top:14px;font-size:12.5px">Opening a fold reveals the
+          events inside and leaves the quiet stretches within it folded in turn. Folds nest;
+          nothing is ever a wall of empty rule.</p>
+        </div>
+
+        <div class="panel" style="margin-top:24px">
+          <div class="panel-h"><h3>The floor</h3><div class="sub">why short stints need one</div></div>
+          <div class="floorbox">
+            <div>
+              <div class="tagline bad">TO SCALE — 2 MONTHS</div>
+              <div class="pillar" style="grid-template-columns:36px 22px 1fr">
+                <div class="yr" style="font-size:10px">2023</div>
+                <div class="rail held" style="min-height:6px"></div>
+                <div class="bd" style="padding-bottom:4px;overflow:hidden;height:8px">
+                  <div class="ev" style="font-size:11px">Halden &amp; Co</div></div>
+              </div>
+              <div class="note" style="font-size:11.5px;margin-top:10px">Six pixels. Cannot hold
+              its own name, let alone its terms.</div>
+            </div>
+            <div>
+              <div class="tagline good">FLOORED</div>
+              <div class="pillar" style="grid-template-columns:36px 22px 1fr">
+                <div class="yr" style="font-size:10px">2023</div>
+                <div class="rail held"></div>
+                <div class="bd" style="padding-bottom:4px">
+                  <div class="ev" style="font-size:12px"><b>Halden &amp; Co</b> <span class="dur past">2 MO</span></div>
+                  <div class="terms" style="font-size:10.5px">€6,000/mo · PJ</div></div>
+              </div>
+              <div class="note" style="font-size:11.5px;margin-top:10px">Duration moves into the
+              badge, where it is exact rather than approximate.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>What this decides for the Timeline view</h2>
+    <p class="note">Three consequences worth carrying into the wireframes, because they close
+    questions the plan left open:</p>
+    <div class="rule-card">
+      <ol>
+        <li><b>Vertical, and no zoom control.</b> Folding replaces zoom entirely — there are no
+          levels, no modes, and nothing to learn. Scrolling is the only navigation.</li>
+        <li><b>No minimap.</b> A second proportional strip would restore at-a-glance duration, but
+          duration is already stated exactly in every badge, and text beats a graphic for a figure
+          you want precisely. One rule, not two.</li>
+        <li><b>Density is a preference, not a fact.</b> The three-month fold threshold is the one
+          number here worth exposing in settings — some people log weekly, some twice a year, and
+          the right threshold differs by an order of magnitude between them.</li>
+      </ol>
+    </div>
+    <p class="note" style="margin-top:18px">And the day-one case still holds: two months of data
+    produces no folds at all, a short rule, and one position. The mechanism only appears once
+    there is something to hide, which is the property a compression scheme most needs and most
+    often lacks.</p>
+  </section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{
+  "name": "hyperion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "build:app": "vite build --mode server",
+    "build:demo": "vue-tsc --noEmit && vite build --mode demo --outDir dist-demo",
+    "build:server": "esbuild server/main.ts --bundle --platform=node --format=esm --packages=external --outfile=dist-server/main.js",
+    "build:self-hosted": "vue-tsc --noEmit && npm run build:app && npm run build:server",
+    "start": "node dist-server/main.js",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.2",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.10.5",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.11",
+    "vitest": "^3.0.5",
+    "vue-tsc": "^2.2.0"
+  }
+}

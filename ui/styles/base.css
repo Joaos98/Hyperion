@@ -1,0 +1,63 @@
+@import './tokens.css';
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--page);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* Money and dates: tabular, so a column of figures never wobbles. */
+.figures {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* User-written prose — the one signature typographic move (identity.html § type). */
+.prose {
+  font-family: var(--serif);
+  color: #c6cad4;
+  line-height: 1.55;
+}
+
+.up {
+  color: var(--rise);
+}
+
+.down {
+  color: var(--fall);
+}

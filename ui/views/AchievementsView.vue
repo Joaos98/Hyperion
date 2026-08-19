@@ -1,0 +1,179 @@
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import { RouterLink } from 'vue-router'
+import { search, type Achievement } from '../../domain/index.js'
+import { deleteAchievement, record } from '../record.js'
+import CaptureBox from '../components/CaptureBox.vue'
+
+const query = ref('')
+const results = computed(() => search(record.achievements as Achievement[], query.value))
+
+function positionName(achievement: Achievement): string | undefined {
+  if (!achievement.positionId) return undefined
+  return record.positions.find((position) => position.id === achievement.positionId)?.company
+}
+
+function monthLabel(date: string): string {
+  const year = date.split('-')[0]
+  const named = new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' })
+  return `${named} ${year}`
+}
+
+/** Achievements grouped under the month they were logged in, both newest first. */
+const grouped = computed(() => {
+  const groups: { label: string; entries: Achievement[] }[] = []
+  for (const achievement of results.value) {
+    const label = monthLabel(achievement.date)
+    const group = groups.at(-1)
+    if (group?.label === label) group.entries.push(achievement)
+    else groups.push({ label, entries: [achievement] })
+  }
+  return groups
+})
+</script>
+
+<template>
+  <div class="board">
+    <CaptureBox />
+
+    <RouterLink to="/self-assessment" class="draft-link">Draft a self-assessment from this log →</RouterLink>
+
+    <input v-model="query" type="text" class="search" placeholder="Search your achievements…" />
+
+    <p v-if="record.achievements.length === 0" class="empty">
+      <b>Your log starts here.</b>
+      Write one line about something you did this week. It does not have to be impressive — in
+      March, when you need it, you will not remember it either way.
+    </p>
+    <p v-else-if="results.length === 0" class="empty">Nothing matches “{{ query }}”.</p>
+
+    <div v-else class="groups">
+      <div v-for="group in grouped" :key="group.label" class="group">
+        <div class="month">{{ group.label.toUpperCase() }}</div>
+        <div v-for="achievement in group.entries" :key="achievement.id" class="entry">
+          <p class="prose">{{ achievement.text }}</p>
+          <div class="meta">
+            {{ achievement.date }}
+            <template v-if="positionName(achievement)"> · {{ positionName(achievement) }}</template>
+            <template v-if="achievement.impact"> · {{ achievement.impact }}</template>
+            <button class="remove" title="Remove" @click="deleteAchievement(achievement.id)">×</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="note">
+      No tags, no categories, no required fields. Search is full-text over the prose above —
+      whether that is enough stays an open question until there are months of real entries to
+      answer it with.
+    </p>
+  </div>
+</template>
+
+<style scoped>
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 68ch;
+}
+
+.draft-link {
+  align-self: flex-start;
+  font-size: 12.5px;
+  color: var(--faint);
+  text-decoration: none;
+}
+
+.draft-link:hover {
+  color: var(--selene);
+}
+
+.search {
+  background: var(--page);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-control);
+  padding: 9px 12px;
+  color: var(--text);
+  font-size: 13.5px;
+  font-family: var(--sans);
+}
+
+.search::placeholder {
+  color: var(--faint);
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.empty b {
+  display: block;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.month {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--faint);
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+}
+
+.entry {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.entry:last-child {
+  border-bottom: none;
+}
+
+.entry .prose {
+  font-size: 14px;
+  margin: 0;
+}
+
+.meta {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--faint);
+  letter-spacing: 0.03em;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.remove {
+  background: transparent;
+  border: none;
+  color: var(--faint);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 2px;
+  font-family: var(--sans);
+}
+
+.remove:hover {
+  color: var(--fall);
+}
+
+.note {
+  color: var(--faint);
+  font-size: 12px;
+  margin-top: 8px;
+}
+</style>

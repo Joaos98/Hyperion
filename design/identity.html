@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hyperion — visual identity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;450;600&family=IBM+Plex+Serif:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* ── Inherited from the family. Prometheus and Atlas landed on these
+        independently; Hyperion does not get a vote. ───────────────── */
+  --page:      #12141A;
+  --surface:   #1B1E27;
+  --hairline:  #2A2E3A;
+  --text:      #EDEFF4;
+  --muted:     #8C93A6;
+  --faint:     #5C6375;
+
+  /* ── Hyperion's own. One accent, two functional. ─────────────────── */
+  --selene:    #9D7BE0;   /* the present, and only the present */
+  --rise:      #7FB894;   /* deltas upward, outcomes that went well */
+  --fall:      #C08A8A;   /* deltas downward, endings */
+
+  --radius-card: 12px;
+  --radius-ctl: 8px;
+  --gap: 16px;
+  --pad: 20px;
+
+  --sans:  'IBM Plex Sans', system-ui, sans-serif;
+  --serif: 'IBM Plex Serif', Georgia, serif;
+  --mono:  'IBM Plex Mono', ui-monospace, monospace;
+
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--page); color:var(--text);
+  font-family:var(--sans); font-size:15px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:56px 40px 96px}
+.brand{display:flex;align-items:center;gap:18px;margin-bottom:6px}
+.markwrap{color:var(--selene);flex:none}
+.mark-lg{width:64px;height:46px;display:block}
+
+h1{font-size:26px;font-weight:600;letter-spacing:-.02em;margin:0 0 6px}
+h2{font-size:12px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;
+   color:var(--faint);margin:0 0 20px}
+.lede{color:var(--muted);max-width:62ch;margin:0 0 8px}
+.lede b{color:var(--text);font-weight:450}
+
+section{margin-top:64px;padding-top:32px;border-top:1px solid var(--hairline)}
+.note{color:var(--muted);font-size:13.5px;max-width:64ch}
+.note code{font-family:var(--mono);font-size:12.5px;color:var(--selene)}
+
+/* ── palette ─────────────────────────────────────────────────────── */
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:var(--gap);margin-bottom:24px}
+.sw{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-card);overflow:hidden}
+.sw .chip{height:64px;border-bottom:1px solid var(--hairline)}
+.sw .meta{padding:12px 14px}
+.sw .name{font-size:13px;font-weight:600}
+.sw .hex{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:2px}
+.sw .job{font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.4}
+
+/* ── type ────────────────────────────────────────────────────────── */
+.type-row{display:grid;grid-template-columns:132px 1fr;gap:28px;padding:22px 0;border-bottom:1px solid var(--hairline)}
+.type-row:last-child{border-bottom:0}
+.type-label{font-size:11.5px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;padding-top:6px}
+.type-label span{display:block;text-transform:none;letter-spacing:0;color:var(--muted);
+                 font-family:var(--mono);font-size:11px;margin-top:6px}
+.spec-ui{font-size:19px;font-weight:450}
+.spec-prose{font-family:var(--serif);font-size:16.5px;line-height:1.65;max-width:58ch;color:#DDE0E8}
+.spec-fig{font-family:var(--mono);font-size:19px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.spec-fig .d{color:var(--rise)}
+
+/* ── the pillar ──────────────────────────────────────────────────── */
+.board{display:grid;grid-template-columns:1.25fr .85fr;gap:40px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-card);padding:var(--pad)}
+.panel-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:20px}
+.panel-h h3{font-size:14px;font-weight:600;margin:0}
+.panel-h .sub{font-size:11.5px;color:var(--faint)}
+
+.pillar{display:grid;grid-template-columns:58px 34px 1fr;column-gap:4px}
+.yr{grid-column:1;font-family:var(--mono);font-size:11.5px;color:var(--faint);
+    padding-top:2px;text-align:right;padding-right:10px}
+.yr.now{color:var(--selene)}
+
+.rail{grid-column:2;position:relative;min-height:26px}
+.rail::before{content:'';position:absolute;left:50%;top:0;bottom:0;transform:translateX(-50%);
+              width:1px;background:var(--hairline)}
+.rail.held::before{width:7px;border-radius:1px;background:#333949}
+.rail.held.current::before{background:linear-gradient(180deg,var(--selene),#4B456D)}
+.rail.split::before{width:7px;border-radius:1px;background:#333949;transform:translateX(-135%)}
+.rail.split::after{content:'';position:absolute;left:50%;top:0;bottom:0;transform:translateX(35%);
+                   width:3px;border-radius:1px;background:#2f3a44}
+
+.mark{position:absolute;left:50%;top:9px;width:9px;height:9px;border-radius:50%;
+      transform:translateX(-50%);background:var(--page);border:2px solid var(--muted);z-index:2}
+.mark.up{border-color:var(--rise);background:var(--rise)}
+.mark.note{border-color:var(--faint);width:7px;height:7px;top:11px}
+.mark.end{border-color:var(--fall);background:var(--page)}
+
+.body{grid-column:3;padding:0 0 22px 12px;min-height:26px}
+.body .role{font-size:14.5px;font-weight:600;letter-spacing:-.005em}
+.body .co{color:var(--muted);font-weight:400}
+.body .terms{font-family:var(--mono);font-size:12px;color:var(--muted);
+             font-variant-numeric:tabular-nums;margin-top:3px}
+.body .terms b{color:var(--text);font-weight:500}
+.body .terms .up{color:var(--rise)}
+.body .ach{font-family:var(--serif);font-size:14px;color:#C6CAD4;line-height:1.55;max-width:48ch}
+.body .ev{font-size:13px;color:var(--muted)}
+.body .ev b{color:var(--text);font-weight:500}
+.body .gapline{font-size:12.5px;color:var(--faint);font-style:italic}
+.tick{display:inline-block;font-family:var(--mono);font-size:10.5px;color:var(--faint);
+      border:1px solid var(--hairline);border-radius:4px;padding:1px 5px;margin-left:8px;
+      vertical-align:1px;letter-spacing:.03em}
+
+/* ── empty state ─────────────────────────────────────────────────── */
+.empty .body .role{color:var(--text)}
+.capture{background:var(--page);border:1px solid var(--hairline);border-radius:var(--radius-ctl);
+         padding:11px 14px;color:var(--faint);font-size:14px;display:flex;justify-content:space-between}
+.capture kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--hairline);
+             border-radius:4px;padding:1px 6px;color:var(--faint)}
+.stale{font-size:12.5px;color:var(--muted);margin-top:14px}
+.stale b{color:var(--selene);font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand"><span class="markwrap"><svg class="mark-lg" viewBox="380 442 932 672" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><g transform="translate(0,1428) scale(0.1,-0.1)" fill="currentColor" stroke="none"><path d="M8315 9705 c-355 -33 -689 -99 -865 -172 -167 -69 -435 -225 -600
+-349 -193 -146 -525 -529 -692 -801 -276 -446 -350 -782 -328 -1486 5 -153 7
+-284 4 -290 -3 -7 -51 -43 -107 -82 -257 -177 -654 -480 -877 -669 -371 -314
+-696 -653 -826 -862 -118 -189 -118 -357 -1 -472 92 -90 213 -125 422 -124
+323 1 805 113 1420 329 177 61 766 286 873 331 37 16 126 53 197 82 214 87
+546 226 615 258 36 17 148 68 250 115 405 187 718 344 1085 547 473 262 691
+387 880 507 39 24 156 98 260 164 242 154 499 326 965 647 703 485 787 549
+1080 818 367 339 566 549 625 663 8 17 35 58 59 93 89 128 134 252 151 415 7
+76 -9 176 -37 222 -38 60 -165 101 -318 101 -174 0 -545 -64 -783 -136 -67
+-20 -165 -49 -217 -65 -235 -69 -312 -95 -565 -194 -223 -88 -473 -207 -490
+-235 -7 -11 115 -129 134 -130 8 0 71 16 140 35 169 46 281 65 431 72 150 7
+187 -4 214 -61 16 -35 16 -38 -3 -82 -27 -61 -124 -176 -257 -304 -113 -109
+-269 -248 -315 -281 l-27 -19 -53 92 c-124 221 -197 322 -374 517 -300 332
+-517 498 -835 641 -350 157 -744 210 -1235 165z m-2361 -3492 c47 -141 110
+-278 174 -381 29 -46 52 -86 52 -88 0 -25 -316 -113 -551 -154 -148 -25 -305
+-35 -341 -21 -15 5 -35 22 -44 36 -16 24 -15 28 14 88 39 78 129 198 219 291
+84 87 406 336 435 336 3 0 22 -48 42 -107z"/>
+<path d="M4606 8949 c-109 -26 -225 -121 -274 -227 -24 -51 -27 -68 -27 -172
+0 -104 3 -120 27 -173 15 -32 51 -81 80 -110 236 -236 629 -109 690 222 29
+154 -58 333 -203 419 -75 45 -201 62 -293 41z"/>
+<path d="M12479 7036 c-111 -43 -181 -106 -227 -204 -24 -50 -27 -69 -27 -162
+0 -95 3 -110 28 -163 37 -74 110 -147 184 -184 53 -25 68 -28 163 -28 95 0
+111 3 162 28 79 39 143 104 181 185 29 61 32 76 32 162 0 82 -4 103 -27 152
+-37 80 -107 152 -186 190 -56 28 -77 33 -156 35 -59 2 -103 -2 -127 -11z"/>
+<path d="M10679 6633 c-449 -336 -646 -477 -854 -611 -237 -152 -335 -207
+-695 -389 -424 -215 -946 -449 -1545 -693 -231 -95 -338 -144 -355 -165 -11
+-14 -7 -23 36 -66 164 -167 503 -309 847 -354 152 -19 422 -19 574 0 312 41
+611 140 943 311 667 344 1076 803 1291 1446 54 162 96 340 108 463 6 55 13
+128 17 161 7 64 -2 154 -15 154 -4 0 -162 -116 -352 -257z"/>
+<path d="M10376 3996 c-154 -65 -233 -196 -224 -370 4 -65 11 -93 35 -141 38
+-72 99 -133 173 -171 50 -26 65 -29 155 -29 89 0 106 3 157 28 74 36 139 101
+175 175 25 51 28 68 28 157 0 88 -3 107 -27 157 -34 74 -113 152 -186 186 -85
+39 -205 42 -286 8z"/></g></svg></span>
+    <h1>Hyperion — visual identity</h1></div>
+  <p class="lede">Takes the family's ground, surfaces and hairlines unchanged. Spends its own
+  identity on three things: <b>one accent that means the present</b>, <b>a serif reserved for
+  the words you wrote yourself</b>, and <b>the Pillar</b> — a career rendered as one continuous
+  vertical rule rather than a stack of cards.</p>
+
+  <section>
+    <h2>Palette</h2>
+    <div class="swatches">
+      <div class="sw"><div class="chip" style="background:#12141A"></div><div class="meta">
+        <div class="name">page</div><div class="hex">#12141A</div>
+        <div class="job">Family. Prometheus <code>#12141c</code>, Atlas <code>#12141A</code>.</div></div></div>
+      <div class="sw"><div class="chip" style="background:#1B1E27"></div><div class="meta">
+        <div class="name">surface</div><div class="hex">#1B1E27</div>
+        <div class="job">Family. One step up. Flat — never a shadow.</div></div></div>
+      <div class="sw"><div class="chip" style="background:#2A2E3A"></div><div class="meta">
+        <div class="name">hairline</div><div class="hex">#2A2E3A</div>
+        <div class="job">Family. Every division in the app is this.</div></div></div>
+      <div class="sw"><div class="chip" style="background:#9D7BE0"></div><div class="meta">
+        <div class="name">selene</div><div class="hex">#9D7BE0</div>
+        <div class="job"><b>The accent, and the mark.</b> The present tense only — current
+        position, today, the active view. Never decoration, never a chart.</div></div></div>
+      <div class="sw"><div class="chip" style="background:#7FB894"></div><div class="meta">
+        <div class="name">rise</div><div class="hex">#7FB894</div>
+        <div class="job">Deltas upward and outcomes that went well. Nothing else.</div></div></div>
+      <div class="sw"><div class="chip" style="background:#C08A8A"></div><div class="meta">
+        <div class="name">fall</div><div class="hex">#C08A8A</div>
+        <div class="job">Deltas downward, departures, rejections. Nothing else.</div></div></div>
+    </div>
+    <p class="note">The suite mark is one shared shape recoloured per app — Prometheus
+    <code>#e8935c</code> and Atlas <code>#4f8dff</code> are byte-identical apart from the fill.
+    So the accent <b>is</b> the logo, and it has to hold at 18px in a browser tab beside both of
+    them. That rules out warm (Prometheus's) and blue (Atlas's), and it rules out anything pale:
+    a washed accent reads as a colour nobody chose. Hyperion fathered the moon as well as the
+    sun, so it takes <b>Selene</b> — moonlight, with enough chroma to be a mark.</p>
+    <p class="note" style="margin-top:12px">Named for the concept rather than the pigment, the
+    way Prometheus names its accent <code>--fire</code> and not <code>--orange</code>. Amethyst
+    is the swatch; Selene is what it means. <code>rise</code> and <code>fall</code> stay
+    deliberately muted so they cannot compete with it, and each colour carries a stated
+    jurisdiction the way Prometheus's category palette does — a palette without one becomes
+    fruit salad.</p>
+  </section>
+
+  <section>
+    <h2>Type — one superfamily, three jobs</h2>
+    <div class="type-row">
+      <div class="type-label">Interface<span>Plex Sans</span></div>
+      <div><div class="spec-ui">Senior Backend Engineer · Kestrel Systems</div>
+      <p class="note" style="margin:8px 0 0">Labels, navigation, headings, controls. 400/450/600.</p></div>
+    </div>
+    <div class="type-row">
+      <div class="type-label">Your words<span>Plex Serif</span></div>
+      <div><p class="spec-prose" style="margin:0">Rewrote the settlement reconciliation job after the
+      December incident. Cut the nightly run from 90 minutes to under 6, and it has not paged anyone
+      since.</p>
+      <p class="note" style="margin:10px 0 0">The signature typographic move. Achievements are the
+      one place in the app where a person wrote something in their own voice, to be read back years
+      later. Setting them as <b>document</b> rather than interface is what makes the log feel like
+      evidence. Neither sibling has a serif anywhere.</p></div>
+    </div>
+    <div class="type-row">
+      <div class="type-label">Figures<span>Plex Mono</span></div>
+      <div><div class="spec-fig">€78,000 → €91,500 &nbsp;<span class="d">+17.3%</span></div>
+      <p class="note" style="margin:8px 0 0">Money, dates and the timeline gutter. Tabular
+      throughout, so columns of salary never wobble. Bundled, not fetched — Atlas imports from
+      Google Fonts, which breaks the moment the box is offline.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The signature — the Pillar</h2>
+    <div class="board">
+
+      <div class="panel">
+        <div class="panel-h"><h3>Timeline</h3><div class="sub">a career, unbroken</div></div>
+        <div class="pillar">
+
+          <div class="yr now">2026</div>
+          <div class="rail held current"></div>
+          <div class="body">
+            <div class="role">Senior Backend Engineer <span class="co">· Kestrel Systems</span>
+              <span class="tick">NOW · 4y 9m</span></div>
+            <div class="terms">€91,500 base · €9,000 target · <b>Vast</b> full-time</div>
+          </div>
+
+          <div class="yr">Mar</div>
+          <div class="rail held current"><div class="mark up"></div></div>
+          <div class="body"><div class="ev"><b>Promotion</b> — Engineer → Senior
+            <span style="font-family:var(--mono);font-size:12px" class="terms">€78,000 →
+            <b>€91,500</b> <span class="up">+17.3%</span></span></div></div>
+
+          <div class="yr">Feb</div>
+          <div class="rail held current"><div class="mark note"></div></div>
+          <div class="body"><p class="ach" style="margin:0">Rewrote the settlement reconciliation
+            job after the December incident. Nightly run down from 90 minutes to under 6.</p></div>
+
+          <div class="yr">2025</div>
+          <div class="rail held current"></div>
+          <div class="body"></div>
+
+          <div class="yr">Jun</div>
+          <div class="rail split current"><div class="mark note"></div></div>
+          <div class="body"><div class="ev">Contract work alongside — <b>Halden &amp; Co</b>
+            <span class="tick">2 POSITIONS</span></div>
+            <div class="terms">the rule splits and rejoins; nothing about it is a special case</div></div>
+
+          <div class="yr">2024</div>
+          <div class="rail held current"></div>
+          <div class="body"></div>
+
+          <div class="yr">Sep</div>
+          <div class="rail held current"><div class="mark up"></div></div>
+          <div class="body"><div class="ev"><b>Raise</b>
+            <span class="terms">€71,000 → <b>€78,000</b> <span class="up">+9.9%</span></span></div></div>
+
+          <div class="yr">2023</div>
+          <div class="rail held current"><div class="mark"></div></div>
+          <div class="body"><div class="ev"><b>Started</b> at Kestrel Systems</div>
+            <div class="terms">€71,000 base · full-time · landed from application</div></div>
+
+          <div class="yr">&nbsp;</div>
+          <div class="rail"></div>
+          <div class="body"><div class="gapline">3 months, no position</div></div>
+
+          <div class="yr">2020</div>
+          <div class="rail held"><div class="mark end"></div></div>
+          <div class="body"><div class="role">Backend Engineer <span class="co">· Nordwerk</span></div>
+            <div class="terms">2y 4m · ended — resigned</div></div>
+
+        </div>
+      </div>
+
+      <div>
+        <div class="panel empty">
+          <div class="panel-h"><h3>Day one</h3><div class="sub">the state nobody designs</div></div>
+          <div class="pillar">
+            <div class="yr now">2026</div>
+            <div class="rail held current"></div>
+            <div class="body">
+              <div class="role">Backend Engineer <span class="co">· Kestrel Systems</span>
+                <span class="tick">NOW · 2m</span></div>
+              <div class="terms">R$ 14.500 /mo · <b>CLT</b></div>
+            </div>
+            <div class="yr">&nbsp;</div>
+            <div class="rail held current"></div>
+            <div class="body"><div class="gapline">Nothing logged yet. The rule still starts
+              somewhere.</div></div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:24px">
+          <div class="panel-h"><h3>Home</h3><div class="sub">capture, always visible</div></div>
+          <div class="capture"><span>What did you ship?</span><kbd>↵</kbd></div>
+          <div class="stale">Last logged <b>6 weeks ago</b></div>
+          <p class="note" style="margin:14px 0 0;font-size:12.5px">A fact, not a prompt. Nothing to
+          dismiss, no cadence to get wrong.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <p class="note" style="margin-top:26px">The Pillar encodes something true rather than
+    decorating: your career is continuous, and what varies is what you were doing inside it. A
+    <b>position thickens the rule</b>, a <b>gap thins it to a hairline</b>, and
+    <b>overlapping positions split it into two strands that rejoin</b> — which is exactly what
+    contract work alongside a salaried job is, and it needs no special case. Marks crossing the
+    rule are events; only <code>selene</code> reaches the current stretch, so "where am I now" is
+    answered before you read a word. Hyperion is the Pillar of the East, and the rule is the
+    pillar — which is the justification, and also why it is vertical.</p>
+  </section>
+
+</div>
+</body>
+</html>
