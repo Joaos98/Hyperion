@@ -15,6 +15,8 @@ import {
   type PaymentId,
   type Position,
   type PositionId,
+  type Round,
+  type RoundId,
   type StandingTerms,
   type StandingTermsId,
   type User,
@@ -32,6 +34,7 @@ interface RecordState {
   achievements: Achievement[]
   applications: Application[]
   applicationEvents: ApplicationEvent[]
+  rounds: Round[]
   documents: DocumentMeta[]
 }
 
@@ -45,6 +48,7 @@ const state = reactive<RecordState>({
   achievements: [],
   applications: [],
   applicationEvents: [],
+  rounds: [],
   documents: [],
 })
 
@@ -94,6 +98,7 @@ async function refresh(): Promise<void> {
     state.achievements = loaded.achievements
     state.applications = loaded.applications
     state.applicationEvents = loaded.applicationEvents
+    state.rounds = loaded.rounds
     state.documents = loaded.documents
   }
   state.loading = false
@@ -177,11 +182,12 @@ export async function saveApplication(application: Application): Promise<void> {
   state.applications = upsert(state.applications, application)
 }
 
-/** Cascades its Application Events — nothing refuses this the way deletePosition does. */
+/** Cascades its Application Events and Rounds — nothing refuses this the way deletePosition does. */
 export async function deleteApplication(id: ApplicationId): Promise<void> {
   await store.deleteApplication(currentUserId(), id)
   state.applications = state.applications.filter((row) => row.id !== id)
   state.applicationEvents = state.applicationEvents.filter((row) => row.applicationId !== id)
+  state.rounds = state.rounds.filter((row) => row.applicationId !== id)
 }
 
 export async function saveApplicationEvent(event: ApplicationEvent): Promise<void> {
@@ -192,6 +198,16 @@ export async function saveApplicationEvent(event: ApplicationEvent): Promise<voi
 export async function deleteApplicationEvent(id: ApplicationEventId): Promise<void> {
   await store.deleteApplicationEvent(currentUserId(), id)
   state.applicationEvents = state.applicationEvents.filter((row) => row.id !== id)
+}
+
+export async function saveRound(round: Round): Promise<void> {
+  await store.writeRound(round)
+  state.rounds = upsert(state.rounds, round)
+}
+
+export async function deleteRound(id: RoundId): Promise<void> {
+  await store.deleteRound(currentUserId(), id)
+  state.rounds = state.rounds.filter((row) => row.id !== id)
 }
 
 /**

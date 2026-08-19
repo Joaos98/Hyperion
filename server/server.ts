@@ -331,6 +331,17 @@ async function route(
     }
   }
 
+  if (at[0] === 'rounds' && at[1] && at.length === 2) {
+    if (method === 'PUT') {
+      await store.writeRound(await asked(request, 'round'))
+      return send(response, 204)
+    }
+    if (method === 'DELETE') {
+      await store.deleteRound(userId, at[1])
+      return send(response, 204)
+    }
+  }
+
   if (at[0] === 'documents' && at[1] && at.length === 2 && method === 'PUT') {
     const sent = await askedDocument(request)
     const document = sent.document as DocumentMeta

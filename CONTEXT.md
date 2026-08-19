@@ -216,9 +216,13 @@ Terms is the whole of what an offer-comparison feature would have been.
 _Avoid_: offer, package, final salary
 
 **Stage**:
-A named point in the pipeline: Saved, Applied, Screen, Interview, Offer, Rejected, Withdrawn, Landed.
-A fixed list, not a user-defined workflow — a funnel only means something if every period measures the
-same points.
+A named point in the pipeline: Saved, Applied, Screen, Assessment, Interview, Offer, Rejected,
+Withdrawn, Landed. A fixed list, not a user-defined workflow — a funnel only means something if every
+period measures the same points. Assessment is a take-home or timed test: hours of unpaid work, and a
+point applications die at for reasons unlike any other, so it earns a place the finer detail of a
+process does not. Stages are not ordinal in the data — Status is simply the latest event's Stage, and
+a process that runs a test between two conversations records exactly that, in whatever order it
+happened. What a Stage never holds is a single step of the process; that is a Round.
 _Avoid_: status (for the named point), step, phase, column
 
 **Application Event**:
@@ -258,14 +262,23 @@ The dimension response rates are most worth broken down by, and the one that sur
 applications into named campaigns did not.
 _Avoid_: channel, origin, via
 
-**Interview**:
-A scheduled conversation with a prospective employer: when, who, its format, and afterwards the notes
-on how it went. Distinct from the Interview Stage — entering a Stage is a fact about the pipeline and
-belongs in the event log, while an Interview is an appointment that may be in the future. It cannot
-be an Application Event without breaking the rule that Status is the latest event's Stage, since a
-scheduled interview would otherwise put the Application in Interview before anybody had interviewed.
-Hyperion displays it and never alerts on it; the calendar owns that.
-_Avoid_: meeting, call, screen (for a scheduled Interview)
+**Round**:
+One step a company actually put you through: when, its kind — Interview or Take-home — who if
+anyone, and afterwards the notes on how it went. A phone screen, a technical conversation, a
+system-design discussion and a final round are all Interviews; which flavor a given one was is
+whatever the notes say, the same place the debrief already lives, rather than a second field
+competing with it — a live pair-programming session is a conversation and a test at once, and asking
+which one it "really" is forces an arbitrary answer for no gain the data ever cashes in. What every
+Round shares is a date, a kind, a verdict in prose, and no arithmetic — unlike Standing Terms and
+Payment, which are split because one accumulates and the other supersedes.
+
+Distinct from Stage, which is one point in a fixed list, where Rounds are a list as long as the
+process actually is: a phone screen, a take-home, two technical rounds and a final are five Rounds
+while the Status reads Interview throughout. A Round also cannot be an Application Event without
+breaking the rule that Status is the latest event's Stage, since a Round scheduled for next week
+would otherwise put the Application there before it happened. Hyperion displays a Round and never
+alerts on it; the calendar owns that.
+_Avoid_: interview (for the entity), assessment (for the entity), meeting, call, step, stage
 
 **Prior Application**:
 An Application already recorded that matches one being entered — by posting URL, or by company with a

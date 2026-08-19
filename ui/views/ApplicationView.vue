@@ -11,17 +11,21 @@ import {
   type ApplicationEvent,
   type Currency,
   type EmploymentType,
+  type Round,
+  type RoundKind,
   type Stage,
 } from '../../domain/index.js'
 import {
   deleteApplication,
   deleteApplicationEvent,
   deleteDocument,
+  deleteRound,
   landApplication,
   readDocumentBytes,
   record,
   saveApplication,
   saveApplicationEvent,
+  saveRound,
   today,
   uploadDocument,
 } from '../record.js'
@@ -36,7 +40,7 @@ const events = computed(() =>
 )
 const currentStatus = computed(() => status(events.value))
 
-const STAGES: Stage[] = ['saved', 'applied', 'screen', 'interview', 'offer', 'rejected', 'withdrawn']
+const STAGES: Stage[] = ['saved', 'applied', 'screen', 'assessment', 'interview', 'offer', 'rejected', 'withdrawn']
 
 function fmt(minor: number, currency: Currency): string {
   return formatAmount({ minor, currency })
@@ -59,6 +63,44 @@ async function submitEvent(): Promise<void> {
   })
   eventNote.value = ''
   eventOpen.value = false
+}
+
+// ── Rounds ──────────────────────────────────────────────────────────────
+// Unlike an Application Event, a Round is genuinely edited in place rather than
+// superseded by a new row: it starts life as just a scheduled date and kind, and the
+// same entry gains its notes once it has actually happened (CONTEXT.md § Round —
+// "an appointment that may be in the future").
+const rounds = computed(() =>
+  (record.rounds as Round[]).filter((row) => row.applicationId === props.id).sort((a, b) => b.date.localeCompare(a.date)),
+)
+
+const roundOpen = ref(false)
+const roundEditingId = ref<string | null>(null)
+const roundDate = ref(today())
+const roundKind = ref<RoundKind>('interview')
+const roundPerson = ref('')
+const roundNotes = ref('')
+
+function openRoundForm(existing?: Round): void {
+  roundEditingId.value = existing?.id ?? null
+  roundDate.value = existing?.date ?? today()
+  roundKind.value = existing?.kind ?? 'interview'
+  roundPerson.value = existing?.person ?? ''
+  roundNotes.value = existing?.notes ?? ''
+  roundOpen.value = true
+}
+
+async function submitRound(): Promise<void> {
+  if (!application.value) return
+  await saveRound({
+    id: roundEditingId.value ?? mintId(),
+    applicationId: application.value.id,
+    date: roundDate.value,
+    kind: roundKind.value,
+    person: roundPerson.value.trim() || null,
+    notes: roundNotes.value.trim() || null,
+  })
+  roundOpen.value = false
 }
 
 // ── Advertised Range ─────────────────────────────────────────────────────
@@ -278,6 +320,39 @@ async function download(): Promise<void> {
             <small>{{ event.date }}<template v-if="event.note"> · {{ event.note }}</template></small>
           </div>
           <button class="remove" title="Remove" @click="deleteApplicationEvent(event.id)">×</button>
+        </div>
+
+        <h3 class="later">Rounds <span class="count">{{ rounds.length }}</span></h3>
+
+        <div v-if="!roundOpen" class="row-actions">
+          <button class="toggle" @click="openRoundForm()">+ Add Round</button>
+        </div>
+        <form v-else class="inline-form" @submit.prevent="submitRound">
+          <label>
+            Kind
+            <select v-model="roundKind">
+              <option value="interview">Interview</option>
+              <option value="take-home">Take-home</option>
+            </select>
+          </label>
+          <label>Date <input v-model="roundDate" type="date" required /></label>
+          <label>Person <input v-model="roundPerson" type="text" placeholder="optional" /></label>
+          <label>Notes <textarea v-model="roundNotes" placeholder="optional — how it went, once it has"></textarea></label>
+          <div class="actions">
+            <button type="submit" class="primary">Save</button>
+            <button type="button" class="ghost" @click="roundOpen = false">Cancel</button>
+          </div>
+        </form>
+
+        <div v-for="round in rounds" :key="round.id" class="line">
+          <div class="l">
+            {{ round.kind === 'interview' ? 'Interview' : 'Take-home' }}<template v-if="round.person"> · {{ round.person }}</template>
+            <small>{{ round.date }}<template v-if="round.notes"> · {{ round.notes }}</template></small>
+          </div>
+          <div class="doc-actions">
+            <button class="linkbtn" @click="openRoundForm(round)">edit</button>
+            <button class="remove" title="Remove" @click="deleteRound(round.id)">×</button>
+          </div>
         </div>
       </div>
 
@@ -610,7 +685,8 @@ h3.later {
 }
 
 .inline-form input,
-.inline-form select {
+.inline-form select,
+.inline-form textarea {
   background: var(--page);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-control);
@@ -618,6 +694,12 @@ h3.later {
   color: var(--text);
   font-size: 13px;
   font-family: var(--sans);
+}
+
+.inline-form textarea {
+  resize: vertical;
+  min-height: 52px;
+  line-height: 1.5;
 }
 
 .error {

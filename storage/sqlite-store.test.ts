@@ -25,7 +25,7 @@ describe('SqliteStore — beyond the shared contract', () => {
     const db = new DatabaseConstructor(':memory:')
     new SqliteStore(db)
     expect(() => new SqliteStore(db)).not.toThrow()
-    expect(db.pragma('user_version', { simple: true })).toBe(3)
+    expect(db.pragma('user_version', { simple: true })).toBe(4)
   })
 
   it('refuses a Standing Terms row whose Position does not exist', async () => {

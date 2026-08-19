@@ -235,41 +235,34 @@ bytes cannot drift apart. Individual documents download normally; the whole-app 
 now; the check that populates it belongs with the search analytics below, since it does nothing until
 there is a corpus to check against.
 
-### 6. Browser capture
-
-Deliberately stupid: capture the URL, the page title and the raw visible text, and post that to
-Hyperion. No per-site parsers — LinkedIn, Indeed, Greenhouse, Lever and Workday all differ and all
-change without warning, and maintaining five scrapers is how a personal project acquires a second
-job. Fill the fields manually from the captured text, or hand the text to the LLM and have it extract
-them.
-
-A bookmarklet gets most of this with nothing to install and no store review. A thin MV3 extension is
-a day or two on top if the bookmarklet chafes. Either way the capture endpoint is guarded by an API
-key, following the precedent Atlas sets with `X-API-Key` on its sync endpoint.
-
-### 7. The rest of the AI layer
+### 6. The rest of the AI layer
 
 - **Achievements → résumé bullets**, the first half of the loop the motivation describes
-- **Captured text → structured fields**, replacing every per-site parser with one prompt
 - **Job description → gap analysis** against the record
 - Cover letter drafting, last, because it is the most common demo and the least useful outcome
 
-### 8. When a search starts
+### 7. When a search starts
 
 Everything here is analytics over a live pipeline. None of it can be tuned against zero applications
 in flight — a stall threshold in particular is a number you can only learn by watching real
 applications go quiet — so it waits until there is a search to watch.
 
-- **Interviews** — scheduled conversations with a date, a person, a format, and afterwards a debrief.
-  Distinct from the Interview *stage*, because an appointment can be in the future and the event log
-  cannot be.
+- **Rounds** — the steps a company actually put you through, one entry each: a date, a kind (Interview
+  or Take-home — coarse on purpose, matching the free-text notes decision: which flavor of interview
+  it was lives in the debrief, not a second field), who if anyone, and a debrief afterwards. Distinct
+  from Stage, because a Round can be scheduled for the future where the event log cannot, and because
+  several ordinarily sit under one Stage (CONTEXT.md § Round). Deliberately one entity rather than
+  separate Interview and Assessment types: a live pair-programming session is a conversation and a
+  test at once, and the two would behave identically anyway. The one item in this section not waiting
+  on a live pipeline to tune against, since it is a record rather than an analytic — **shipped**,
+  below, same day it was settled.
 - **Prior-application awareness** — the notice when you have history with a company, populating the
   column reserved above. Applying again is legitimate and often sensible, so it is context and never
   a block; only an Open application to the same posting is worth raising a voice for.
 - **The funnel**, response rates and time-to-response
 - **Stall detection** and the attention view
 
-### 9. Currency conversion
+### 8. Currency conversion
 
 A comparison spanning two currencies needs a common unit, and the principles above rule out a rate
 feed — so Hyperion asks for the rate it needs, at the moment it first needs it, and remembers the
@@ -286,7 +279,7 @@ Worth saying plainly, since it is the reason to want any of this: converting a S
 dollars says very little about whether you are better off, because cost of living dominates and no
 exchange rate captures it. That judgement is yours. Hyperion shows the rate it used and stops there.
 
-### 10. Equity
+### 9. Equity
 
 Grants recorded at their value when made, with vesting stored as **dated tranches** rather than as
 schedule shapes — any schedule reduces to a list of dates and amounts, and a form with the usual
@@ -331,6 +324,10 @@ Named here so they stop coming back up:
   category and the pull toward becoming a worse Workday is strong. The achievement log is the line.
 - **Sharing between Users.** Several people on one deployment is supported; showing each other
   anything is not. That line is what keeps a permissions model out of the app.
+- **Browser capture.** Was planned (§ Feature set used to number it 6: a bookmarklet or thin
+  extension posting a job page's URL, title and visible text to Hyperion, an API-key-guarded
+  endpoint, no per-site parsers). Dropped 2026-08-19, by direct decision — not deferred pending a
+  signal the way § When a search starts is; just not being built. Applications get entered by hand.
 
 ## Architecture
 
@@ -562,6 +559,34 @@ Verified against a real `npm run build:demo` + static serve: the facade on first
 persona rendering correctly across Timeline/Positions/Compensation/Achievements/Applications after
 "View the demo", no re-seed or duplication on reload, and `npm run dev` unaffected throughout.
 
+### Shipped — the Assessment Stage and Round
+
+2026-08-19, out of a conversation about a two-Stage proposal ("Interview Scheduled" / "Interviewed")
+that turned out to misdiagnose the actual gap: Stages already aren't ordinal in the stored data —
+Status is just the latest Event's Stage, nothing enforces forward motion — so a take-home test simply
+had nowhere to go, not an ordering problem. `assessment` joins the `Stage` union between `screen` and
+`interview` (CONTEXT.md § Stage); no migration, the column was always unconstrained `text`.
+
+**Round** (CONTEXT.md § Round) is the bigger piece: one entity for every step a company actually put
+an Application through — phone screens, technical rounds, take-homes, finals — deliberately not split
+into separate Interview/Assessment types, since a live pair-programming round is a conversation and a
+test at once and the two would behave identically regardless. `kind` is coarse on purpose (`interview`
+| `take-home`) — which flavor of interview it was lives in the one free-text `notes` field, the same
+shape Achievement's own `text` already uses. Unlike every other dated row in the app (Standing Terms,
+Payment, Achievement, Application Event — all add-only, a correction is a new row), a Round is
+genuinely edited in place: it starts as just a date and kind when scheduled, and the same row gains
+its `notes` once it has actually happened, which is the entire reason CONTEXT.md separates Round from
+Application Event in the first place.
+
+Full stack: `domain/types.ts` (`Round`, `RoundId`, `RoundKind`), `storage/port.ts` (`writeRound`/
+`deleteRound`, `UserRecord.rounds`), migration #4 in `storage/sqlite-store.ts` (a `rounds` table,
+cascading off `applications`), the same two methods added to `LocalStorageStore` and `httpStore`,
+shared CRUD coverage in `storage/port-contract.ts`, `PUT`/`DELETE /api/rounds/:id` in `server/server.ts`,
+and the UI on `ApplicationView.vue` — an edit affordance alongside the usual delete, the one exception
+to this app's otherwise-universal "add or delete, never edit" convention for dated rows. Verified
+end-to-end in-browser: add, edit-in-place with no duplication, a second Round of a different kind on
+the same Application, and delete.
+
 ### In progress — home page redesign
 
 Started 2026-08-19, from the complaint that the home Timeline "feels too empty" next to
@@ -643,12 +668,13 @@ cleanly as the model expects.
 
 ### After the gate
 
-Browser capture, the rest of the AI layer, currency conversion, equity. In whatever order the need
-appears.
+The rest of the AI layer, currency conversion, equity, and the data-export feature never built (§
+Architecture: "exporting your data from Settings is the other half" of the backup story). In
+whatever order the need appears.
 
 ### When a search starts
 
-Interviews, prior-application awareness, the funnel, response rates, stall detection, the attention
+Rounds, prior-application awareness, the funnel, response rates, stall detection, the attention
 view. Built while watching real applications, which is the only way they would be right.
 
 ### Decide after real use

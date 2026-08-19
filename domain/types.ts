@@ -22,6 +22,9 @@ export type ApplicationId = string
 /** An Application Event's identity. */
 export type ApplicationEventId = string
 
+/** A Round's identity. */
+export type RoundId = string
+
 /** A Document's identity. */
 export type DocumentId = string
 
@@ -140,7 +143,16 @@ export interface Achievement {
  * workflow, because a funnel only means something if every Application is measured
  * against the same points.
  */
-export type Stage = 'saved' | 'applied' | 'screen' | 'interview' | 'offer' | 'rejected' | 'withdrawn' | 'landed'
+export type Stage =
+  | 'saved'
+  | 'applied'
+  | 'screen'
+  | 'assessment'
+  | 'interview'
+  | 'offer'
+  | 'rejected'
+  | 'withdrawn'
+  | 'landed'
 
 /**
  * What a posting claimed the job pays (CONTEXT.md § Advertised Range) — a claim about a
@@ -204,6 +216,29 @@ export interface ApplicationEvent {
   stage: Stage
   date: IsoDate
   note: string | null
+}
+
+/** Which kind of step a Round was — deliberately coarse (CONTEXT.md § Round): which flavor
+ * of Interview it was belongs in `notes`, not a second field. */
+export type RoundKind = 'interview' | 'take-home'
+
+/**
+ * One step a company actually put you through (CONTEXT.md § Round) — a phone screen, a
+ * technical conversation, a take-home, a final round, whatever it was. Distinct from
+ * Application Event: a Round may be scheduled for the future, which the event log cannot
+ * hold without lying about Status, and several Rounds ordinarily sit under one Stage.
+ * `notes` is one free-text field, the same shape as Achievement's own `text` — the specific
+ * flavor of Interview this was, and how it went, both belong in the same prose rather than
+ * a second field competing with it.
+ */
+export interface Round {
+  id: RoundId
+  applicationId: ApplicationId
+  date: IsoDate
+  kind: RoundKind
+  /** Who it was with, if known — free text, optional. */
+  person: string | null
+  notes: string | null
 }
 
 /**

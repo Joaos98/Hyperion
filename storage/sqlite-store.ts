@@ -19,6 +19,9 @@ import type {
   PaymentId,
   Position,
   PositionId,
+  Round,
+  RoundId,
+  RoundKind,
   Stage,
   StandingTerms,
   StandingTermsId,
@@ -187,6 +190,22 @@ const migrations: ((db: Database) => void)[] = [
       create index sessions_user on sessions(user_id);
     `)
   },
+
+  /** 4 — Rounds (CONTEXT.md § Round): the steps a company actually put an Application through. */
+  (db) => {
+    db.exec(`
+      create table rounds (
+        id text primary key,
+        application_id text not null references applications(id) on delete cascade,
+        date text not null,
+        kind text not null,
+        person text,
+        notes text
+      );
+
+      create index rounds_application on rounds(application_id);
+    `)
+  },
 ]
 
 function migrate(db: Database): void {
@@ -326,6 +345,17 @@ function rowToApplicationEvent(row: ApplicationEventRow): ApplicationEvent {
   }
 }
 
+function rowToRound(row: RoundRow): Round {
+  return {
+    id: row.id,
+    applicationId: row.application_id,
+    date: row.date,
+    kind: row.kind as RoundKind,
+    person: row.person,
+    notes: row.notes,
+  }
+}
+
 function rowToSession(row: SessionRow): Session {
   return {
     token: row.token,
@@ -442,6 +472,14 @@ interface ApplicationEventRow {
   date: string
   note: string | null
 }
+interface RoundRow {
+  id: string
+  application_id: string
+  date: string
+  kind: string
+  person: string | null
+  notes: string | null
+}
 interface DocumentMetaRow {
   id: string
   user_id: string
@@ -500,6 +538,17 @@ export class SqliteStore implements HyperionStore {
               .all(...applicationIds) as ApplicationEventRow[]
           ).map(rowToApplicationEvent)
 
+    const rounds =
+      applicationIds.length === 0
+        ? []
+        : (
+            this.db
+              .prepare(
+                `select * from rounds where application_id in (${applicationIds.map(() => '?').join(', ')}) order by rowid`,
+              )
+              .all(...applicationIds) as RoundRow[]
+          ).map(rowToRound)
+
     // Every column except `bytes` — the metadata a record listing needs, at none of the
     // cost of the files behind it.
     const documents = (
@@ -518,6 +567,7 @@ export class SqliteStore implements HyperionStore {
       achievements,
       applications,
       applicationEvents,
+      rounds,
       documents,
     }
   }
@@ -817,8 +867,8 @@ export class SqliteStore implements HyperionStore {
   }
 
   async deleteApplication(userId: UserId, id: ApplicationId): Promise<void> {
-    // Application Events cascade; nothing refuses this the way Achievements do for a
-    // Position — an Application's history is its own, and deleting it loses nothing else.
+    // Application Events and Rounds cascade; nothing refuses this the way Achievements do
+    // for a Position — an Application's history is its own, and deleting it loses nothing else.
     this.db.prepare('delete from applications where id = ? and user_id = ?').run(id, userId)
   }
 
@@ -839,6 +889,35 @@ export class SqliteStore implements HyperionStore {
     this.db
       .prepare(
         `delete from application_events where id = ? and application_id in
+           (select id from applications where user_id = ?)`,
+      )
+      .run(id, userId)
+  }
+
+  async writeRound(round: Round): Promise<void> {
+    this.requireApplicationOwner(round.applicationId)
+    this.db
+      .prepare(
+        `insert into rounds (id, application_id, date, kind, person, notes)
+         values (@id, @applicationId, @date, @kind, @person, @notes)
+         on conflict(id) do update set
+           application_id = excluded.application_id, date = excluded.date,
+           kind = excluded.kind, person = excluded.person, notes = excluded.notes`,
+      )
+      .run({
+        id: round.id,
+        applicationId: round.applicationId,
+        date: round.date,
+        kind: round.kind,
+        person: round.person,
+        notes: round.notes,
+      })
+  }
+
+  async deleteRound(userId: UserId, id: RoundId): Promise<void> {
+    this.db
+      .prepare(
+        `delete from rounds where id = ? and application_id in
            (select id from applications where user_id = ?)`,
       )
       .run(id, userId)

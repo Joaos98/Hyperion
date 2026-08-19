@@ -13,6 +13,8 @@ import {
   type PaymentId,
   type Position,
   type PositionId,
+  type Round,
+  type RoundId,
   type StandingTerms,
   type StandingTermsId,
   type User,
@@ -63,6 +65,7 @@ function defaulted(record: Partial<UserRecord> & Pick<UserRecord, 'user'>): User
     achievements: record.achievements ?? [],
     applications: record.applications ?? [],
     applicationEvents: record.applicationEvents ?? [],
+    rounds: record.rounds ?? [],
     documents: record.documents ?? [],
   }
 }
@@ -119,6 +122,7 @@ export class LocalStorageStore implements HyperionStore {
       achievements: [],
       applications: [],
       applicationEvents: [],
+      rounds: [],
       documents: [],
     }
     this.write(records)
@@ -207,6 +211,7 @@ export class LocalStorageStore implements HyperionStore {
     const record = requireRecord(records, userId)
     record.applications = record.applications.filter((row) => row.id !== id)
     record.applicationEvents = record.applicationEvents.filter((row) => row.applicationId !== id)
+    record.rounds = record.rounds.filter((row) => row.applicationId !== id)
     this.write(records)
   }
 
@@ -221,6 +226,20 @@ export class LocalStorageStore implements HyperionStore {
     const records = this.read()
     const record = requireRecord(records, userId)
     record.applicationEvents = record.applicationEvents.filter((row) => row.id !== id)
+    this.write(records)
+  }
+
+  async writeRound(round: Round): Promise<void> {
+    const records = this.read()
+    const record = ownerOfApplication(records, round.applicationId)
+    record.rounds = upsert(record.rounds, round)
+    this.write(records)
+  }
+
+  async deleteRound(userId: UserId, id: RoundId): Promise<void> {
+    const records = this.read()
+    const record = requireRecord(records, userId)
+    record.rounds = record.rounds.filter((row) => row.id !== id)
     this.write(records)
   }
 

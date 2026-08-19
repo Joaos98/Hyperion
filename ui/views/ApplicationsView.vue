@@ -108,6 +108,7 @@ async function submit(): Promise<void> {
           <option value="saved">Saved</option>
           <option value="applied">Applied</option>
           <option value="screen">Screen</option>
+          <option value="assessment">Assessment</option>
           <option value="interview">Interview</option>
           <option value="offer">Offer</option>
         </select>

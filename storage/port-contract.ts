@@ -6,6 +6,7 @@ import type {
   DocumentMeta,
   Payment,
   Position,
+  Round,
   StandingTerms,
   User,
 } from '../domain/index.js'
@@ -62,6 +63,10 @@ function sampleApplication(userId: string, id = 'app-1'): Application {
 
 function sampleEvent(applicationId: string, id = 'evt-1'): ApplicationEvent {
   return { id, applicationId, stage: 'applied', date: '2026-07-22', note: null }
+}
+
+function sampleRound(applicationId: string, id = 'round-1'): Round {
+  return { id, applicationId, date: '2026-08-05', kind: 'interview', person: 'Sarah, Eng Manager', notes: null }
 }
 
 function sampleDocumentMeta(userId: string, id = 'doc-1'): DocumentMeta {
@@ -288,6 +293,56 @@ export function runStoreContract(name: string, createStore: () => HyperionStore 
       const record = await store.loadUserRecord('user-1')
       expect(record?.applicationEvents.map((row) => row.id)).toEqual(['evt-2'])
       expect(record?.applications).toHaveLength(1)
+    })
+
+    it('writes a Round under its Application', async () => {
+      const store = await createStore()
+      await store.createUser(sampleUser())
+      await store.writeApplication(sampleApplication('user-1'))
+      await store.writeRound(sampleRound('app-1'))
+      const record = await store.loadUserRecord('user-1')
+      expect(record?.rounds).toHaveLength(1)
+      expect(record?.rounds[0]?.kind).toBe('interview')
+    })
+
+    it('refuses a Round whose Application does not exist', async () => {
+      const store = await createStore()
+      await store.createUser(sampleUser())
+      await expect(store.writeRound(sampleRound('no-such-application'))).rejects.toThrow(StorageError)
+    })
+
+    it('deletes an Application and cascades its Rounds', async () => {
+      const store = await createStore()
+      await store.createUser(sampleUser())
+      await store.writeApplication(sampleApplication('user-1'))
+      await store.writeRound(sampleRound('app-1'))
+      await store.deleteApplication('user-1', 'app-1')
+      const record = await store.loadUserRecord('user-1')
+      expect(record?.applications).toEqual([])
+      expect(record?.rounds).toEqual([])
+    })
+
+    it('deletes a single Round without touching its siblings or the Application', async () => {
+      const store = await createStore()
+      await store.createUser(sampleUser())
+      await store.writeApplication(sampleApplication('user-1'))
+      await store.writeRound(sampleRound('app-1', 'round-1'))
+      await store.writeRound({ ...sampleRound('app-1', 'round-2'), kind: 'take-home' })
+      await store.deleteRound('user-1', 'round-1')
+      const record = await store.loadUserRecord('user-1')
+      expect(record?.rounds.map((row) => row.id)).toEqual(['round-2'])
+      expect(record?.applications).toHaveLength(1)
+    })
+
+    it('upserts a Round written twice rather than duplicating it', async () => {
+      const store = await createStore()
+      await store.createUser(sampleUser())
+      await store.writeApplication(sampleApplication('user-1'))
+      await store.writeRound(sampleRound('app-1'))
+      await store.writeRound({ ...sampleRound('app-1'), notes: 'Went well, moving to the next round.' })
+      const record = await store.loadUserRecord('user-1')
+      expect(record?.rounds).toHaveLength(1)
+      expect(record?.rounds[0]?.notes).toBe('Went well, moving to the next round.')
     })
 
     it('writes a Document’s metadata and bytes together, and reads both back', async () => {

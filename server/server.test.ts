@@ -447,6 +447,34 @@ describe('positions, standing terms, payments and achievements', () => {
     expect(withoutThem.record.applicationEvents).toEqual([])
   })
 
+  it('round-trips a Round under its Application, then deletes it', async () => {
+    const { base, cookie } = await seededServer()
+    const application = {
+      id: 'app-1',
+      userId: 'local',
+      company: 'Aurora Labs',
+      title: 'Staff Engineer',
+      source: 'Referral',
+      postingUrl: null,
+      advertisedRange: null,
+      offeredTerms: null,
+      documentId: null,
+      priorApplicationId: null,
+    }
+    await fetch(`${base}/api/applications/app-1`, authed(cookie, { method: 'PUT', body: JSON.stringify({ application }) }))
+
+    const round = { id: 'round-1', applicationId: 'app-1', date: '2026-08-05', kind: 'interview', person: 'Sarah', notes: null }
+    const put = await fetch(`${base}/api/rounds/round-1`, authed(cookie, { method: 'PUT', body: JSON.stringify({ round }) }))
+    expect(put.status).toBe(204)
+
+    const withIt = (await (await fetch(`${base}/api/record`, authed(cookie))).json()) as { record: { rounds: unknown[] } }
+    expect(withIt.record.rounds).toEqual([round])
+
+    await fetch(`${base}/api/rounds/round-1`, authed(cookie, { method: 'DELETE' }))
+    const withoutIt = (await (await fetch(`${base}/api/record`, authed(cookie))).json()) as { record: { rounds: unknown[] } }
+    expect(withoutIt.record.rounds).toEqual([])
+  })
+
   it('writes a Document, downloads its raw bytes, then deletes it', async () => {
     const { base, cookie } = await seededServer()
     const document = {
