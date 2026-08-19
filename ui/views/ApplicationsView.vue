@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
-import { isOpen, mintId, status, type Application, type ApplicationEvent, type Stage } from '../../domain/index.js'
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
+import { daysBetween, isOpen, mintId, priorApplicationFor, status, type Application, type ApplicationEvent, type Stage } from '../../domain/index.js'
 import { currentUserId, record, saveApplication, saveApplicationEvent, today } from '../record.js'
+
+const route = useRoute()
 
 const eventsByApplication = computed(() => {
   const map = new Map<string, ApplicationEvent[]>()
@@ -57,6 +59,30 @@ const initialDate = ref(today())
 const documentId = ref('')
 const error = ref('')
 
+// ── Prior Application (CONTEXT.md § Prior Application) ─────────────────────
+// Context while the form is open, never a block — surfaced by company with a similar
+// title, or by posting URL. The one case worth a stronger note is when that match is
+// still Open: applying again once time has passed is normal, but two Open Applications
+// to the same posting at once is usually a slip.
+const priorMatch = computed(() => {
+  if (!company.value.trim() || !title.value.trim()) return undefined
+  return priorApplicationFor(
+    { company: company.value.trim(), title: title.value.trim(), postingUrl: postingUrl.value.trim() || null },
+    record.applications as Application[],
+  )
+})
+const priorMatchStatus = computed(() => (priorMatch.value ? statusOf(priorMatch.value) : undefined))
+const priorMatchOpen = computed(() =>
+  priorMatch.value ? isOpen(eventsByApplication.value.get(priorMatch.value.id) ?? []) : false,
+)
+const priorMatchDaysAgo = computed(() => {
+  if (!priorMatch.value) return undefined
+  const events = eventsByApplication.value.get(priorMatch.value.id) ?? []
+  if (events.length === 0) return undefined
+  const latest = events.reduce((max, event) => (event.date > max ? event.date : max), events[0]!.date)
+  return daysBetween(latest, today())
+})
+
 async function submit(): Promise<void> {
   error.value = ''
   if (!company.value.trim() || !title.value.trim()) {
@@ -73,7 +99,7 @@ async function submit(): Promise<void> {
     advertisedRange: null,
     offeredTerms: null,
     documentId: documentId.value || null,
-    priorApplicationId: null,
+    priorApplicationId: priorMatch.value?.id ?? null,
   }
   await saveApplication(application)
   await saveApplicationEvent({
@@ -92,6 +118,17 @@ async function submit(): Promise<void> {
   documentId.value = ''
   formOpen.value = false
 }
+
+/** `/applications?again=<id>` — reached from a prior Application's own "Apply again", pre-filling company, title and source from it. */
+onMounted(() => {
+  const againId = route.query['again']
+  const template = typeof againId === 'string' ? record.applications.find((row) => row.id === againId) : undefined
+  if (!template) return
+  company.value = template.company
+  title.value = template.title
+  source.value = template.source
+  formOpen.value = true
+})
 </script>
 
 <template>
@@ -100,6 +137,20 @@ async function submit(): Promise<void> {
     <form v-else class="form" @submit.prevent="submit">
       <label>Company <input v-model="company" type="text" required /></label>
       <label>Title <input v-model="title" type="text" required /></label>
+
+      <p v-if="priorMatch" class="prior" :class="{ warn: priorMatchOpen }">
+        <template v-if="priorMatchOpen">
+          You already have an open Application to {{ priorMatch.company }} — {{ priorMatch.title }},
+          last moved {{ priorMatchDaysAgo }}d ago.
+        </template>
+        <template v-else>
+          You applied to {{ priorMatch.company }} for {{ priorMatch.title }}
+          <template v-if="priorMatchDaysAgo !== undefined">, {{ priorMatchDaysAgo }}d ago</template>
+          — ended <b>{{ priorMatchStatus?.toUpperCase() }}</b>.
+        </template>
+        <RouterLink :to="`/applications/${priorMatch.id}`">see it</RouterLink>
+      </p>
+
       <label>Source <input v-model="source" type="text" placeholder="Referral, job board, recruiter…" /></label>
       <label>Posting URL <input v-model="postingUrl" type="text" placeholder="optional" /></label>
       <label>
@@ -234,6 +285,27 @@ async function submit(): Promise<void> {
 
 .hint a {
   color: var(--selene);
+}
+
+.prior {
+  background: var(--page);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-control);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  margin: -4px 0 0;
+}
+
+.prior.warn {
+  border-color: var(--fall);
+  color: var(--fall);
+}
+
+.prior a {
+  color: var(--selene);
+  margin-left: 4px;
 }
 
 .error {

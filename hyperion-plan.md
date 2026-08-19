@@ -258,7 +258,9 @@ applications go quiet — so it waits until there is a search to watch.
   below, same day it was settled.
 - **Prior-application awareness** — the notice when you have history with a company, populating the
   column reserved above. Applying again is legitimate and often sensible, so it is context and never
-  a block; only an Open application to the same posting is worth raising a voice for.
+  a block; only an Open application to the same posting is worth raising a voice for. Another item not
+  actually waiting on a live pipeline to tune against — **shipped**, below, once real Applications
+  existed to have history with.
 - **The funnel**, response rates and time-to-response
 - **Stall detection** and the attention view
 
@@ -685,6 +687,32 @@ server-build-only sections so every build (self-hosted, demo, plain local dev) g
 the browser-storage builds have no `cp hyperion.db` equivalent at all, so the need is if anything
 sharper there. Verified in-browser: the zip's local file headers, CRC-32s and end-of-central-directory
 record all check out, and `data.json` round-trips the real record correctly.
+
+### Shipped — Prior Application
+
+2026-08-19, once the first real Applications existed to have history with. `domain/applications.ts`'s
+`priorApplicationFor(candidate, existing)` matches by posting URL, or by company with a similar title
+(CONTEXT.md § Prior Application) — a union of both signals, since neither alone is reliable: the same
+posting gets re-listed under a slightly different title, and two different roles at one company can
+otherwise share a title outright. Of several matches, the one `existing` places last is used — the
+same later-in-the-list-is-later-in-time convention `eventsNewestFirst` already uses. Set once, at
+creation, into the `priorApplicationId` column that had sat unused since § The application record.
+
+`ApplicationsView.vue`'s Add-Application form shows the match as it's typed — plain context normally
+("You applied to X before, ended REJECTED"), a red warning only when that match is still Open (the one
+case worth raising a voice for). `ApplicationView.vue`'s detail page carries the same note permanently
+once an Application has a `priorApplicationId`, linking back to it. "Apply again," on a Rejected or
+Withdrawn Application's own detail page, is CONTEXT.md's "pre-fills the new Application from the old
+one if you go again" — a `/applications?again=<id>` link that pre-fills company, title and source and
+opens the form.
+
+Verified in-browser against a real prior Application, and caught a real, pre-existing bug doing it:
+`ApplicationView.vue`'s `currentStatus` called `status()` on `events`, a computed already run through
+`eventsNewestFirst` for display — `status()` sorts internally too, and applying the same-day tie-break
+a second time reads position in the already-reordered array as if it were original insertion order,
+inverting it. Invisible until an Application first had two same-day Events, which this session's own
+manual testing happened to produce. Fixed by reading `events.value[0]?.stage` directly instead of
+re-sorting; `status()` gained a doc comment warning against ever passing it pre-sorted input again.
 
 ### When a search starts
 

@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import {
+  daysBetween,
   eventsNewestFirst,
   formatBytes,
   formatAmount,
+  isOpen,
+  isTerminalStage,
   mintId,
   status,
   toMinor,
+  type Application,
   type ApplicationEvent,
   type Currency,
   type EmploymentType,
@@ -38,9 +42,39 @@ const application = computed(() => record.applications.find((row) => row.id === 
 const events = computed(() =>
   eventsNewestFirst((record.applicationEvents as ApplicationEvent[]).filter((row) => row.applicationId === props.id)),
 )
-const currentStatus = computed(() => status(events.value))
+// `events` is already newest-first (below), so its own first entry is the Status — calling
+// `status()` again here would re-sort an already-sorted array, and `eventsNewestFirst`'s
+// same-day tie-break reads insertion order, which a second pass no longer has correctly.
+const currentStatus = computed(() => events.value[0]?.stage)
 
 const STAGES: Stage[] = ['saved', 'applied', 'screen', 'assessment', 'interview', 'offer', 'rejected', 'withdrawn']
+
+// ── Prior Application (CONTEXT.md § Prior Application) ─────────────────────
+const priorApplication = computed(() =>
+  application.value?.priorApplicationId
+    ? (record.applications as Application[]).find((row) => row.id === application.value!.priorApplicationId)
+    : undefined,
+)
+const priorEvents = computed(() =>
+  priorApplication.value
+    ? (record.applicationEvents as ApplicationEvent[]).filter((row) => row.applicationId === priorApplication.value!.id)
+    : [],
+)
+const priorStatus = computed(() => (priorApplication.value ? status(priorEvents.value) : undefined))
+const priorOpen = computed(() => (priorApplication.value ? isOpen(priorEvents.value) : false))
+const priorDaysAgo = computed(() => {
+  if (priorEvents.value.length === 0) return undefined
+  const latest = priorEvents.value.reduce((max, event) => (event.date > max ? event.date : max), priorEvents.value[0]!.date)
+  return daysBetween(latest, today())
+})
+
+/** Reapplying only makes sense once an Application is actually over, and not for a job you got. */
+const canApplyAgain = computed(() => currentStatus.value !== undefined && isTerminalStage(currentStatus.value) && currentStatus.value !== 'landed')
+
+async function applyAgain(): Promise<void> {
+  if (!application.value) return
+  await router.push({ path: '/applications', query: { again: application.value.id } })
+}
 
 function fmt(minor: number, currency: Currency): string {
   return formatAmount({ minor, currency })
@@ -283,11 +317,19 @@ async function download(): Promise<void> {
           {{ application.source }}
           <template v-if="application.postingUrl"> · <a :href="application.postingUrl" target="_blank" rel="noopener">posting</a></template>
         </div>
+        <p v-if="priorApplication" class="prior" :class="{ warn: priorOpen }">
+          Prior Application to {{ priorApplication.company }} — {{ priorApplication.title }}
+          <template v-if="priorDaysAgo !== undefined">, {{ priorDaysAgo }}d ago</template>
+          <template v-if="priorOpen"> — still <b>{{ priorStatus?.toUpperCase() }}</b></template>
+          <template v-else> — ended <b>{{ priorStatus?.toUpperCase() }}</b></template>.
+          <RouterLink :to="`/applications/${priorApplication.id}`">see it</RouterLink>
+        </p>
       </div>
       <div class="head-actions">
         <span class="chip" :class="{ ok: currentStatus === 'landed', no: currentStatus === 'rejected' || currentStatus === 'withdrawn' }">
           {{ currentStatus?.toUpperCase() }}
         </span>
+        <button v-if="canApplyAgain" class="btn" @click="applyAgain">Apply again</button>
         <button class="btn end" @click="remove">Delete</button>
       </div>
     </div>
@@ -485,6 +527,30 @@ h2 {
 
 .meta a {
   color: var(--selene);
+}
+
+.prior {
+  font-size: 12px;
+  color: var(--faint);
+  margin-top: 6px;
+}
+
+.prior b {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.prior.warn {
+  color: var(--fall);
+}
+
+.prior.warn b {
+  color: var(--fall);
+}
+
+.prior a {
+  color: var(--selene);
+  margin-left: 4px;
 }
 
 .head-actions {

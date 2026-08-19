@@ -11,6 +11,10 @@ import type {
   StandingTermsId,
 } from './types.js'
 
+function normalized(text: string): string {
+  return text.trim().toLowerCase()
+}
+
 /** A Stage an Application does not leave (CONTEXT.md § Terminal Stage). */
 const TERMINAL_STAGES: readonly Stage[] = ['rejected', 'withdrawn', 'landed']
 
@@ -42,6 +46,12 @@ export function eventsNewestFirst(events: readonly ApplicationEvent[]): Applicat
  * Derived and never stored — `undefined` for an Application with no Events at all, which
  * should not occur in practice since creating one always logs its first Event, but the
  * type says so rather than assuming it.
+ *
+ * Takes `events` in ANY order and sorts internally — pass the raw list, never one already
+ * run through `eventsNewestFirst`. That function's same-day tie-break reads position in the
+ * array as insertion order; feeding it its own output re-derives that position from the
+ * now-reordered array and inverts the tie (a bug this once was, in `ApplicationView.vue`'s
+ * `currentStatus` — caught only because two same-day Events happened to exist).
  */
 export function status(events: readonly ApplicationEvent[]): Stage | undefined {
   if (events.length === 0) return undefined
@@ -101,4 +111,34 @@ export function landApplication(
   }
 
   return { position, standingTerms, event }
+}
+
+/**
+ * The existing Application `candidate` has history with, if any (CONTEXT.md § Prior
+ * Application) — matched by posting URL, or by company with a similar title, since neither
+ * signal alone is reliable: the same posting can be re-listed under a slightly different
+ * title, and two different roles at one company can otherwise share a title outright. Of
+ * everything that matches, the one `existing` places last — the same later-in-the-list-is-
+ * later-in-time convention `eventsNewestFirst` already uses for Application Events.
+ *
+ * Surfaced as context, never a block: applying again once time has passed is legitimate,
+ * and Hyperion has no opinion on how much time is enough. The one case worth raising a
+ * voice for — an Open Application already sitting at the same posting — is for the caller
+ * to check with `isOpen` against the match this returns, not a second function here.
+ */
+export function priorApplicationFor(
+  candidate: { company: string; title: string; postingUrl: string | null },
+  existing: readonly Application[],
+): Application | undefined {
+  const matches = existing.filter((application) => {
+    if (candidate.postingUrl && application.postingUrl === candidate.postingUrl) return true
+    return normalized(application.company) === normalized(candidate.company) && similarTitle(application.title, candidate.title)
+  })
+  return matches.length > 0 ? matches[matches.length - 1] : undefined
+}
+
+function similarTitle(a: string, b: string): boolean {
+  const x = normalized(a)
+  const y = normalized(b)
+  return x === y || x.includes(y) || y.includes(x)
 }

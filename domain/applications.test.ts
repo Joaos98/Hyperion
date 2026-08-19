@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DomainError } from './errors.js'
-import { eventsNewestFirst, isOpen, isTerminalStage, landApplication, status } from './applications.js'
+import { eventsNewestFirst, isOpen, isTerminalStage, landApplication, priorApplicationFor, status } from './applications.js'
 import type { Currency } from './money.js'
 import type { Application, ApplicationEvent } from './types.js'
 
@@ -122,5 +122,55 @@ describe('landApplication', () => {
 
   it('refuses to Land an Application with no Offered Terms', () => {
     expect(() => landApplication({ ...application, offeredTerms: null }, ids, '2026-08-20')).toThrow(DomainError)
+  })
+})
+
+describe('priorApplicationFor', () => {
+  function application(overrides: Partial<Application>): Application {
+    return {
+      id: 'app-1',
+      userId: 'user-1',
+      company: 'Kestrel Systems',
+      title: 'Backend Engineer',
+      source: 'Referral',
+      postingUrl: null,
+      advertisedRange: null,
+      offeredTerms: null,
+      documentId: null,
+      priorApplicationId: null,
+      ...overrides,
+    }
+  }
+
+  it('is undefined with no history at all', () => {
+    expect(priorApplicationFor({ company: 'Kestrel Systems', title: 'Backend Engineer', postingUrl: null }, [])).toBeUndefined()
+  })
+
+  it('matches by company with a similar title, case-insensitively', () => {
+    const existing = application({ id: 'app-1', company: 'kestrel systems', title: 'Senior Backend Engineer' })
+    const match = priorApplicationFor({ company: 'Kestrel Systems', title: 'Backend Engineer', postingUrl: null }, [existing])
+    expect(match?.id).toBe('app-1')
+  })
+
+  it('does not match on company alone with an unrelated title', () => {
+    const existing = application({ id: 'app-1', company: 'Kestrel Systems', title: 'Sales Director' })
+    const match = priorApplicationFor({ company: 'Kestrel Systems', title: 'Backend Engineer', postingUrl: null }, [existing])
+    expect(match).toBeUndefined()
+  })
+
+  it('matches by posting URL alone, even with an unrelated title', () => {
+    const existing = application({ id: 'app-1', company: 'Kestrel Systems', title: 'Sales Director', postingUrl: 'https://kestrel.example/jobs/42' })
+    const match = priorApplicationFor(
+      { company: 'Kestrel Systems', title: 'Backend Engineer', postingUrl: 'https://kestrel.example/jobs/42' },
+      [existing],
+    )
+    expect(match?.id).toBe('app-1')
+  })
+
+  it('picks the most recently added of several matches', () => {
+    const older = application({ id: 'app-older', title: 'Backend Engineer' })
+    const newer = application({ id: 'app-newer', title: 'Backend Engineer' })
+    const match = priorApplicationFor({ company: 'Kestrel Systems', title: 'Backend Engineer', postingUrl: null }, [older, newer])
+    expect(match?.id).toBe('app-newer')
   })
 })
