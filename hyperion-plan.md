@@ -636,6 +636,16 @@ Canvas: https://claude.ai/code/artifact/7801da2f-1739-4ec7-bc9c-49707938bf8e —
 direction, `Modal` the log-achievement dialog, `DayOne` the near-empty state, `OptionB` the
 rejected header strip kept for reference. Working files under `design/canvas-home/`.
 
+**2026-08-19, two small fixes once real Applications made both visible**: the nav link read
+"Timeline," which stopped being accurate the moment the sidebar shipped — renamed to **Home** in
+`App.vue`, and the route itself from `timeline` to `home` in `router.ts` (nothing else referenced it
+by name). The Applications card's divider doubled up between the last row and "N total / View all":
+`.app-row:last-child { border-bottom: none }` never actually matched, since `.app-foot` was a
+sibling of the `v-for`'d rows and so was *itself* the true last child — wrapping the rows in their
+own `.app-list` container let the selector find the real last row again. The Timeline pillar itself
+(`domain/timeline.ts`, `TimelineEvent`, `foldTimeline`) keeps its name; only the page's own identity
+changed.
+
 ### Monthly display, and Positions gets its own view
 
 Also 2026-08-19, prompted directly by real data going in (§ The gate, below — this is that starting):

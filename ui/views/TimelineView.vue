@@ -344,14 +344,16 @@ function deltaPercent(event: StandingTermsEvent): number | undefined {
           </div>
           <template v-if="applications.length > 0">
             <p v-if="latestApplications.length === 0" class="card-empty">Nothing open right now.</p>
-            <div v-for="application in latestApplications" :key="application.id" class="app-row">
-              <div class="app-l">
-                <div class="app-title">{{ application.title }}</div>
-                <div class="app-co">{{ application.company }}</div>
-              </div>
-              <div class="app-r">
-                <span class="chip" :class="chipClass(statusOf(application))">{{ statusOf(application)?.toUpperCase() }}</span>
-                <span v-if="daysAgo(application) !== undefined" class="ago">{{ daysAgo(application) }}d ago</span>
+            <div class="app-list">
+              <div v-for="application in latestApplications" :key="application.id" class="app-row">
+                <div class="app-l">
+                  <div class="app-title">{{ application.title }}</div>
+                  <div class="app-co">{{ application.company }}</div>
+                </div>
+                <div class="app-r">
+                  <span class="chip" :class="chipClass(statusOf(application))">{{ statusOf(application)?.toUpperCase() }}</span>
+                  <span v-if="daysAgo(application) !== undefined" class="ago">{{ daysAgo(application) }}d ago</span>
+                </div>
               </div>
             </div>
             <div class="app-foot">

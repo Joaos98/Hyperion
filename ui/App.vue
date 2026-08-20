@@ -15,7 +15,7 @@ const isAuthScreen = computed(() => ['login', 'setup', 'register', 'demo-login']
       <span>Hyperion</span>
     </RouterLink>
     <nav>
-      <RouterLink to="/" exact-active-class="on">Timeline</RouterLink>
+      <RouterLink to="/" exact-active-class="on">Home</RouterLink>
       <RouterLink to="/positions" active-class="on">Positions</RouterLink>
       <RouterLink to="/achievements" active-class="on">Achievements</RouterLink>
       <RouterLink to="/compensation" active-class="on">Compensation</RouterLink>

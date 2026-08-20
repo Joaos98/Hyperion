@@ -17,12 +17,12 @@ import { record } from './record.js'
 import { DEMO_ENTERED_KEY, isDemoMode, isServerBuild } from './store.js'
 
 /**
- * Home is the Timeline — there is no separate dashboard (design/views.html § what these
- * settle). The application record's own analytics — funnel, response rates, stall
- * detection, the attention view — wait for a real search to tune them against (plan §
- * When a search starts) and are not routed yet either; the record itself (this list, and
- * Landing) is — Position included, now that it has its own list-plus-detail home the same
- * shape Application already had.
+ * Home renders `TimelineView.vue` — the Timeline pillar plus the sidebar cards (design/
+ * views.html § what these settle) — but is named `home`, not `timeline`, since it is no
+ * longer only the Timeline. There is still no separate dashboard: the application record's
+ * own analytics (funnel, response rates, stall detection, the attention view — plan §
+ * When a search starts, all shipped) live on `ApplicationsView.vue` instead of a route of
+ * their own, the same reasoning that kept Home from becoming one either.
  *
  * `login` / `setup` / `register` are the only routes reachable without a Session in the
  * server build (`ui/main.ts`'s bootstrap, and the guard below); `demo-login` is the same
@@ -32,7 +32,7 @@ import { DEMO_ENTERED_KEY, isDemoMode, isServerBuild } from './store.js'
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', name: 'timeline', component: TimelineView },
+    { path: '/', name: 'home', component: TimelineView },
     { path: '/positions', name: 'positions', component: PositionsView },
     { path: '/achievements', name: 'achievements', component: AchievementsView },
     { path: '/compensation', name: 'compensation', component: CompensationView },
