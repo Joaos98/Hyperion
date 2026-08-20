@@ -2,12 +2,27 @@ import { mintId, type Currency, type Position, type StandingTerms, type UserId }
 import type { HyperionStore } from '../storage/port.js'
 
 const EUR: Currency = { code: 'EUR', symbol: '€', decimals: 2 }
+const USD: Currency = { code: 'USD', symbol: '$', decimals: 2 }
 
 /**
  * A fictional career in a foreign currency, deliberately not the real user's own (plan §
  * Architecture: "The demo is a fictional persona in a foreign market"). `contract` stands
  * in for Employment Type throughout — `clt`/`pj` are Brazil-specific and would read as a
  * visible error next to a European company (CONTEXT.md § Employment Type).
+ *
+ * The career **crosses a currency** on purpose: the first Position pays in USD and every
+ * one after it in EUR. Without a crossing somewhere, currency conversion — the whole of
+ * plan § 8 — is invisible in the published demo, and it is the least ordinary thing the
+ * app does. One crossing out of two job changes is what puts every state of that feature
+ * on screen at once: the average Switch Premium still computes, from the EUR→EUR change,
+ * and says how many switches it had to leave out; the USD→EUR change below it carries the
+ * prompt asking for the rate that would let it be answered.
+ *
+ * No Recorded Rate is seeded, and that is the point rather than an omission. Hyperion
+ * fetches no rates and invents none, and seeding one would have Hyperion invent a rate on
+ * a fictional person's behalf — the same act the app refuses on a real one's. A visitor
+ * types one in and watches the figure resolve, which demonstrates the design better than
+ * arriving at a finished number would.
  *
  * Written through the same `store.write*`/`createUser` calls any real use of the app
  * already makes, so the seed can never drift from what the app actually accepts.
@@ -23,6 +38,7 @@ export async function seedDemo(store: HyperionStore, userId: UserId): Promise<vo
     aiApiKey: null,
     aiModel: null,
     compensationDisplay: 'annual',
+    displayCurrency: null,
   })
 
   const fenwickId = mintId()
@@ -30,12 +46,14 @@ export async function seedDemo(store: HyperionStore, userId: UserId): Promise<vo
     id: fenwickId,
     userId,
     company: 'Fenwick Digital',
-    currency: EUR,
+    currency: USD,
     startDate: '2016-06-01',
-    departure: { date: '2018-05-31', reason: 'resigned' },
+    // The reason a reader will want years later is exactly the one that explains why every
+    // figure below this line is in a different currency (CONTEXT.md § Departure).
+    departure: { date: '2018-05-31', reason: 'resigned — relocating to Europe' },
   }
   await store.writePosition(fenwick)
-  await writeTerms(store, fenwickId, '2016-06-01', 'Junior Backend Engineer', 38_000_00, 0)
+  await writeTerms(store, fenwickId, '2016-06-01', 'Junior Backend Engineer', 45_000_00, 0)
 
   const nordwerkId = mintId()
   const nordwerk: Position = {

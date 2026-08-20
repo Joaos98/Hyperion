@@ -47,6 +47,7 @@ async function start(): Promise<void> {
         aiApiKey: null,
         aiModel: null,
         compensationDisplay: 'monthly',
+        displayCurrency: null,
       })
       await initRecord(store, DEMO_USER_ID)
     }
