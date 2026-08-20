@@ -215,6 +215,44 @@ async function submitOffer(): Promise<void> {
   }
 }
 
+// ── Editing Company, Title, Source and Posting URL ──────────────────────────
+// The only Application fields with no edit path until now — Advertised Range, Offered
+// Terms and the attached Document already had one, but a typo in the Company name or a
+// Posting URL added after the fact had nowhere to go.
+const detailsOpen = ref(false)
+const detailsCompany = ref('')
+const detailsTitle = ref('')
+const detailsSource = ref('')
+const detailsPostingUrl = ref('')
+const detailsError = ref('')
+
+function openDetailsForm(): void {
+  if (!application.value) return
+  detailsCompany.value = application.value.company
+  detailsTitle.value = application.value.title
+  detailsSource.value = application.value.source
+  detailsPostingUrl.value = application.value.postingUrl ?? ''
+  detailsError.value = ''
+  detailsOpen.value = true
+}
+
+async function submitDetails(): Promise<void> {
+  detailsError.value = ''
+  if (!application.value) return
+  if (!detailsCompany.value.trim() || !detailsTitle.value.trim()) {
+    detailsError.value = 'Company and title are both required.'
+    return
+  }
+  await saveApplication({
+    ...application.value,
+    company: detailsCompany.value.trim(),
+    title: detailsTitle.value.trim(),
+    source: detailsSource.value.trim() || 'Direct',
+    postingUrl: detailsPostingUrl.value.trim() || null,
+  })
+  detailsOpen.value = false
+}
+
 // ── Landing ──────────────────────────────────────────────────────────────
 const landing = ref(false)
 
@@ -312,11 +350,27 @@ async function download(): Promise<void> {
   <div v-else class="panel">
     <div class="head">
       <div>
-        <h2>{{ application.title }} <span class="co">· {{ application.company }}</span></h2>
-        <div class="meta">
-          {{ application.source }}
-          <template v-if="application.postingUrl"> · <a :href="application.postingUrl" target="_blank" rel="noopener">posting</a></template>
-        </div>
+        <template v-if="!detailsOpen">
+          <h2>
+            {{ application.title }} <span class="co">· {{ application.company }}</span>
+            <button class="linkbtn edit-details" @click="openDetailsForm">edit</button>
+          </h2>
+          <div class="meta">
+            {{ application.source }}
+            <template v-if="application.postingUrl"> · <a :href="application.postingUrl" target="_blank" rel="noopener">posting</a></template>
+          </div>
+        </template>
+        <form v-else class="inline-form details-form" @submit.prevent="submitDetails">
+          <label>Company <input v-model="detailsCompany" type="text" required /></label>
+          <label>Title <input v-model="detailsTitle" type="text" required /></label>
+          <label>Source <input v-model="detailsSource" type="text" placeholder="Referral, job board, recruiter…" /></label>
+          <label>Posting URL <input v-model="detailsPostingUrl" type="text" placeholder="optional" /></label>
+          <p v-if="detailsError" class="error">{{ detailsError }}</p>
+          <div class="actions">
+            <button type="submit" class="primary">Save</button>
+            <button type="button" class="ghost" @click="detailsOpen = false">Cancel</button>
+          </div>
+        </form>
         <p v-if="priorApplication" class="prior" :class="{ warn: priorOpen }">
           Prior Application to {{ priorApplication.company }} — {{ priorApplication.title }}
           <template v-if="priorDaysAgo !== undefined">, {{ priorDaysAgo }}d ago</template>
@@ -527,6 +581,16 @@ h2 {
 
 .meta a {
   color: var(--selene);
+}
+
+.edit-details {
+  margin-left: 6px;
+  vertical-align: 1px;
+}
+
+.details-form {
+  max-width: 420px;
+  margin-bottom: 0;
 }
 
 .prior {
