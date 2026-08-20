@@ -148,6 +148,16 @@ when a comparison actually needs one, remembers the answer, and fetches none —
 keeps inflation series and share prices out of the app.
 _Avoid_: FX rate, conversion rate, market rate
 
+**Display Currency**:
+The currency a User's figures are *placed and compared* in — never the one anything is stored or
+labelled in. An amount always renders in the currency it was actually paid in; this decides only
+which units a comparison across two currencies resolves to, and which scale a chart spanning two of
+them is drawn against. Not a base currency, which § Currency rules out: it is per-User rather than
+per-deployment, and it moves no stored amount. Left unset it is derived from the earliest Position,
+so a career that never crossed a currency has nothing to set and is never asked; the setting exists
+for the careers that did.
+_Avoid_: base currency, home currency, default currency, primary currency
+
 **Converted**:
 The mark carried by any figure that has crossed currencies, shown alongside the Recorded Rate used
 and its date. Converted figures are never folded silently into a total, and the native-currency view
@@ -192,7 +202,12 @@ _Avoid_: equity value, current value, unvested balance
 
 **Switch Premium**:
 The step change in Total Compensation from a Position's last Standing Terms to the Starting Terms of
-the next one. What changing jobs paid you.
+the next one. What changing jobs paid you. Across a currency boundary the later figure is read in the
+*earlier* Position's currency, at a Recorded Rate for the day the new Position started — the question
+is how big a jump it was from what you were making, which is asked in the units you were making it
+in. Answerable at offer time too, against the Current Position's Standing Terms rather than the next
+Position's, since the Offered Terms carry the same two components; that reading is the one that can
+still change something.
 _Avoid_: job hop gain, jump, raise
 
 **Stay Premium**:
@@ -340,7 +355,7 @@ Individual Documents download normally; a whole-deployment export is a zip of da
 than a single JSON document.
 _Avoid_: file, attachment, résumé (unqualified), asset
 
-### Capture and suggestions
+### AI and suggestions
 
 **AI Setup**:
 A base URL, a model and a key, all `null` until a User configures one — never a closed list of
@@ -354,17 +369,9 @@ API sends no CORS headers at all, so no browser can reach it directly, regardles
 a constraint on OpenAI's own servers, not something Hyperion's request format decides.
 _Avoid_: provider (as a closed enum), integration, connection
 
-**Capture**:
-A job posting pulled in from the browser as a URL, a page title and raw visible text, with no fields
-parsed out of it. It becomes an Application when somebody fills the fields in, or when the AI layer
-proposes them; until then it is only text. Hyperion has no per-site parsers and wants none — every
-board changes its markup eventually, and maintaining five scrapers is how a personal project acquires
-a second job.
-_Avoid_: scrape, import, clip, sync
-
 **Suggestion**:
-Something Hyperion drafts or proposes but never applies — fields extracted from a Capture, a résumé
-bullet drafted from an Achievement, a self-assessment assembled from six months of them. Suggestions
+Something Hyperion drafts or proposes but never applies — a résumé bullet drafted from an
+Achievement, a self-assessment assembled from six months of them. Suggestions
 are always confirmed, edited or dismissed by a person, because a record that edits itself is no longer
 evidence.
 _Avoid_: auto-update, detection, inference, AI action

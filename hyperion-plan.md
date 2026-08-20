@@ -238,9 +238,11 @@ there is a corpus to check against.
 ### 6. The rest of the AI layer
 
 - **Achievements → résumé bullets**, the first half of the loop the motivation describes —
-  **shipped**, below.
-- **Job description → gap analysis** against the record
-- Cover letter drafting, last, because it is the most common demo and the least useful outcome
+  **shipped**, below, and now the whole of this section. Gap analysis and cover letter drafting were
+  the other two; both were dropped 2026-08-20 (§ Deliberately not building). With § 4's
+  self-assessment — the piece that sits outside this section rather than in it, early by design — the
+  AI layer is therefore finished: two views, `SelfAssessmentView.vue` and `ResumeBulletsView.vue`,
+  over one shared AI Setup section in `SettingsView.vue`.
 
 ### 7. When a search starts
 
@@ -270,6 +272,8 @@ applications go quiet — so it waits until there is a search to watch.
   (21 days) is only as good as a guess until watched against real applications going quiet.
 
 ### 8. Currency conversion
+
+**Shipped**, below.
 
 A comparison spanning two currencies needs a common unit, and the principles above rule out a rate
 feed — so Hyperion asks for the rate it needs, at the moment it first needs it, and remembers the
@@ -331,7 +335,18 @@ Named here so they stop coming back up:
   category and the pull toward becoming a worse Workday is strong. The achievement log is the line.
 - **Sharing between Users.** Several people on one deployment is supported; showing each other
   anything is not. That line is what keeps a permissions model out of the app.
-- **Browser capture.** Was planned (§ Feature set used to number it 6: a bookmarklet or thin
+- **Job description → gap analysis, and cover letter drafting.** The two unbuilt items § 6 used to
+  list beside résumé bullets. Dropped 2026-08-20, by direct decision — like browser capture below,
+  not deferred pending a signal. Cover letters carried their own argument from the start: the most
+  common demo in this space and the least useful outcome. Gap analysis was the more defensible of
+  the two and still goes, which draws the line the AI layer now holds: Hyperion's AI reads the
+  record you built and gives it back to you as prose you would have written anyway. Judging a
+  posting against you is a different job — closer to advice than to record-keeping — and the
+  record is what this app is for.
+- **Browser capture.** (`CONTEXT.md` § Capture, which defined the posting it would have pulled in,
+  was deleted 2026-08-20 — the word survives everywhere in this plan and in the code, but only in its
+  other sense, the always-visible Achievement input. Two meanings for one word, one of them for a
+  thing that does not exist, was the collision worth removing.) Was planned (§ Feature set used to number it 6: a bookmarklet or thin
   extension posting a job page's URL, title and visible text to Hyperion, an API-key-guarded
   endpoint, no per-site parsers). Dropped 2026-08-19, by direct decision — not deferred pending a
   signal the way § When a search starts is; just not being built. Applications get entered by hand.
@@ -677,6 +692,10 @@ it any other way.
 
 ### The gate
 
+**Cleared** — confirmed 2026-08-20, the real career record is entered. It was not cleared in the
+order this section intended: eleven features shipped past step 4 first, and the gate was raised again
+each time rather than enforced.
+
 **Your real data goes in before anything past step 4 gets written.** Not "used for a month" —
 entered. Your positions, your compensation history, your current job. That is an afternoon of typing,
 and it is what makes "personal tool first" real rather than aspirational. It will also surface more
@@ -685,9 +704,10 @@ cleanly as the model expects.
 
 ### After the gate
 
-The rest of the AI layer, currency conversion, and equity — shipped, below, is the data-export
-feature that used to sit in this list (§ Architecture: "exporting your data from Settings is the
-other half" of the backup story). The rest in whatever order the need appears.
+Equity, and nothing else — as of 2026-08-20, with currency conversion shipped below, it is the last
+unbuilt item in this plan. The AI layer also sat in this list; it is finished, résumé bullets
+shipped and the other two dropped (§ 6, § Deliberately not building). So did data export, shipped
+below (§ Architecture: "exporting your data from Settings is the other half" of the backup story).
 
 ### Shipped — data export
 
@@ -884,6 +904,185 @@ and both AI views collapsed to a plain `isSetUp` check with a link to Settings w
 "a third AI view is what would justify this" threshold guessed at above never actually needed to be
 reached; being asked directly was enough.
 
+### Shipped — currency conversion
+
+2026-08-20, and much smaller than § 8 reads, because the goal narrowed it: "land a job that pays me
+in USD while still living in Brazil, then see how big of a jump that was." That is one figure, not a
+converted view of the app, and everything that would have served a converted view got cut before it
+was built — no display currency, no per-view "show in" selector, no converted totals anywhere.
+Two of those were designed and recommended in the same session before the goal made them unnecessary.
+
+**The case § 8 warns about does not apply here, which is worth recording since the warning is right
+in general.** Converting a São Paulo salary to dollars says little about whether you are better off
+*because cost of living dominates* — but that assumes you moved. Earning USD while living and
+spending in BRL holds cost of living constant, and the rate is then the whole story. This is the one
+shape of cross-currency comparison Hyperion can answer honestly.
+
+That also settled the target currency with no setting: **convert into the earlier figure's
+currency**, never the later one. "How big a jump was that" is asked in the units of what you were
+making before, and in the case above those are also the units you spend in. The target falls out of
+the comparison, so there is no display currency, nothing on `User`, and `CONTEXT.md` § Currency's
+_Avoid_ list keeps "base currency" on it.
+
+`domain/rates.ts` holds the whole mechanism: `Rate` carries its own `decimals` for the reason
+`Currency` does — quoted rates run to four or five places where salaries are held to two, and
+flattening one to the other costs about R$400 on a six-figure figure. Arithmetic is `BigInt`
+throughout, so an intermediate product never silently loses precision and the only exactness check is
+on the result, which has to be a real amount. A rate answers **both directions** — recording
+"1 USD = 5.4231 BRL" is the same fact as its reciprocal, and asking twice would be asking twice for
+one answer — with `FoundRate.inverted` saying which way it was stored so a figure names the rate the
+User actually typed. `findRate` takes the **nearest** date rather than on-or-before: a rate is
+remembered to be reused, and what keeps it honest is not narrowing the match but showing which rate
+was used and when, which every caller does (CONTEXT.md § Converted).
+
+`Premium` gained a third case. A cross-currency comparison is not `unavailable` — it is *answerable,
+pending one rate* — so `needs-rate` carries the pair and the date, and `RatePrompt.vue` renders
+exactly there. That is § 8's "asks for the rate it needs, at the moment it first needs it" as a
+control rather than a sentence. `switchPremiums()` returns the pairs rather than only their average
+for the same reason: a switch waiting on a rate needs somewhere to be asked about, which an
+averaged-away number does not have.
+
+**The offer-time half turned out to be missing entirely, and it is the more useful half.**
+`domain/types.ts` § OfferedTerms and § Deliberately not building both rest on the claim that
+"offered terms beside current terms is the whole of it" — but `ApplicationView.vue` never loaded
+Standing Terms at all, so it had been rendering the offer alone. `offerPremium()` and a block on that
+view fix it: a USD offer read against what you are paid now, converted, **while you are still
+negotiating**. Landing gives you the same number after you have accepted, when it can only be read.
+
+Two things fixed in passing. `CompensationView.vue` formatted every year of the total-comp chart with
+`positions[0].currency` — the *earliest* Position's — so a BRL→USD career rendered its USD years with
+`R$`; each year now carries its own. And the bars are scaled against the largest year **in their own
+currency**, with a labelled break where the currency changes, because bar length is itself a
+comparison and R$300,000 beside $120,000 is not two-and-a-half times anything. That list is a record
+rather than a comparison, so it is left native and unconverted — the rate is asked for where a
+comparison needs one, and nowhere else.
+
+Verified in-browser end to end on a seeded BRL→USD career: the switch reads "needs a rate", the
+prompt takes 5.4231, and R$260,000 → $140,000 resolves to +192.0% with "Converted — R$759,234.00 at
+1 USD = 5.4231 BRL, 2025-03-01" beneath it; the same rate then serves the offer block on an
+Application without being asked for again.
+
+**The demo crosses a currency**, added the same day once the feature existed: John Doe's first
+Position (Fenwick Digital, 2016–2018) pays in USD and everything after it in EUR, his Departure
+reason reading "resigned — relocating to Europe" so the timeline explains its own currency change.
+Without a crossing the whole of § 8 was invisible in the published build, and it is the least
+ordinary thing the app does. One crossing out of two job changes is what puts every state on screen
+together: the average Switch Premium still computes (+22.4%, from the EUR→EUR change) and says one
+switch is missing from it, while the USD→EUR change below carries the prompt. Fenwick's base moved
+€38,000 → $45,000 in the same edit, so that the switch resolves to a plausible positive figure at any
+sane 2018 rate rather than to a drop. **No Recorded Rate is seeded** — Hyperion invents none for a
+fictional person either, and a visitor typing one in and watching +34.0% appear demonstrates the
+design better than arriving at a finished number. `.claude/launch.json` gained a `hyperion-demo`
+entry (`--mode demo`, port 5174) so the demo build can actually be looked at, which is how the above
+was verified.
+
+The year-by-year display as a proper chart was left as its own piece of work — **shipped below**.
+
+### Shipped — the compensation chart, and the end of the yearly bars
+
+2026-08-20, immediately after currency conversion, and it changed what the view measures rather than
+only how it draws it. On a direct steer: *"it doesn't actually have to be year by year… only show
+data points where the comp increased, so if I went the entire 2025 without any comp change, it
+shouldn't show on the chart."* Exactly right, and the reason is that a calendar year was never a
+data point here — Standing Terms are carried forward unchanged until superseded (CONTEXT.md
+§ Standing Terms), so a year in which nothing happened is the same figure restated. The old bars
+spent most of their width redrawing what a reader already knew while hiding the month a raise
+actually landed. `compensationLines()` replaces `totalCompensationForYear` on this view with the
+dates that carry information: every Standing Terms where pay moved, and nothing else.
+
+**Changed, not increased** — the one place the instruction was not followed literally, and it was
+raised before building rather than after. A relocation that pays less in the new currency, or a
+PJ→CLT conversion that moves the gross figure down, is a real point in a record; a line that plotted
+only the rises would be untrue by omission, which is what every other suppression in this codebase
+exists to avoid. Falls are drawn, and drawn as falls (`cut`, in `--fall`).
+
+Four decisions the shape rests on:
+
+- **A Standing Terms that moved the title and not the pay is dropped.** It belongs to the Timeline,
+  which labels it, and not to a chart of what a job paid. A step is measured against the last point
+  that *moved*, not against the row immediately before it.
+- **Each Position is its own run.** The stretch between two jobs is an absence of compensation, not a
+  compensation of zero, and a line dipping to the axis and back would assert a figure nobody
+  recorded. This also handles overlapping Positions — contract work beside a salaried job
+  (CONTEXT.md § Current Position) — as two runs rather than a sum.
+- **One panel per currency, sharing the time axis.** Same reasoning that governs the Recorded Rate:
+  two currencies have no common height, and the rate that would give them one belongs to the
+  comparisons below, not to a record of what each job paid.
+- **Payments are ticks on the baseline, off the y-scale.** A bonus that arrived once is not a rate
+  the job pays; giving a €3,000 signing bonus a height beside a €71,000 salary would invite a
+  comparison that means nothing (CONTEXT.md § Payment: treating the two alike is how a compensation
+  history stops adding up). They stay visible, and stay off the line.
+
+Verified against the demo career, where eleven bars became five points: `$45,000` at Fenwick, then
+`€52,000 → €58,000` at Nordwerk and `€71,000 → €88,000 → €100,500` at Kestrel, each panel on its own
+scale under a shared 2016–2026 axis. Screenshots were unavailable in the session, so the geometry was
+checked numerically through the live DOM instead — three real bugs came out of that which a glance
+would likely have missed: the first year's tick landing outside the frame at x = −29, the leftmost
+amount label half off the canvas, and the panel labels sitting above y = 0. All three traced to one
+cause, a time domain starting at the exact first date rather than at a whole year.
+
+### Fixed — a second job read as a job change
+
+2026-08-20. Found by asking what happens to a career holding two Positions at once in
+different currencies (CONTEXT.md § Current Position: contract work beside a salaried job is
+ordinary). The chart handled it correctly — two runs, two panels, nothing summed, which is
+what "each Position is its own run" was for. What did not was **Switch Premium**:
+`averageSwitchPremiumPercent` had paired Positions by start date since it was written, so a
+second job taken *alongside* the first reported as a job change, and — after currency
+conversion shipped — went on to ask for an exchange rate to quantify a move nobody made.
+Pre-existing and long invisible; the average had been quietly including these phantom
+switches, and only listing the pairs individually brought it into view.
+
+The rule now matches the vocabulary: a switch is into a Position from the job most recently
+**left** — a Departure on or before the new Position started — so a Position nobody had left
+yet is not something you switched away from, and at most one switch lands per Position. A
+gap between jobs still counts, since one was still left for the other.
+
+### Shipped — Display Currency, and the chart as one shape
+
+2026-08-20. The chart's redesign and the currency question turned out to be one decision, not two,
+and it took a long conversation to see why: *"what I want this view to do is tell me the evolution of
+my comp."* A view whose job is evolution cannot break in half at the moment the currency changes —
+which, for the record this app is being built around, will be the largest step in the career.
+
+What broke the deadlock was separating two things that had been stuck together. The objection to
+converting was never conversion as such; it was **restating a salary as a number nobody was paid**.
+So the chart converts the *geometry* and not the record: every point still reads in the currency it
+was paid in — `$45,000` stays `$45,000` — and the rate supplies only the heights, which were never a
+fact about anyone's pay to begin with. A marker names the crossing, a line beneath names the rate.
+§ Converted's rule holds where it bites, and the line is continuous.
+
+**One rate per currency, never one per point.** A rate looked up at each point's own date would let
+the slope move because the currency moved, and a salary that never changed would draw as a rise or a
+fall — the chart would stop being a record of pay. One factor rescales a currency's figures as a
+block, so the shape inside it is exactly what happened. It is anchored at the first date both
+currencies are on the record, which is also the date the Switch Premium across that boundary asks
+about, so the two never ask for the same rate under two different dates. Entering it once resolves
+both, verified in the browser.
+
+**`User.displayCurrency`** (migration 7, three nullable columns flattened as Position flattens its
+own) settles what the geometry resolves *to*, and — by direct decision — retargets Switch Premium
+too, so a page cannot show one currency in a chart and another in the comparison beneath it.
+`Premium.converted` became `conversions: FoundRate[]`, since converting both sides can want two
+rates; one rate serving both sides is named once rather than twice.
+
+Two calls worth recording:
+
+- **Derived, not asked at sign-up.** Floated as a sign-up question and argued down: registration is
+  the one moment there is no record to answer against, and it would be the upfront table § 8
+  explicitly refused. `null` means *the earliest Position's currency*, which for a single-currency
+  record is simply the currency — so nobody is asked, nothing prompts, and every existing record
+  keeps behaving exactly as it did. The Settings control appears only once a record holds more than
+  one currency.
+- **It is not a base currency**, which `CONTEXT.md` § Currency lists under _Avoid_. The distinction
+  is real and now written down (§ Display Currency): per-User rather than per-deployment, and it
+  moves no stored amount. An earlier session argued against this setting on exactly that objection;
+  what changed is that concurrency killed the alternative — with two currencies live at once there is
+  no crossing to infer a direction from, and inference had run out.
+
+Where a rate is missing the view falls back to a lane per currency — honest, just not yet one shape —
+and asks for the one rate that would join them.
+
 ### When a search starts
 
 Rounds, prior-application awareness, stall detection, the funnel and response rates are all shipped,
@@ -919,8 +1118,11 @@ vocabulary discipline is a stronger signal than three unrelated projects, and th
 
 ## Open questions
 
-- Whether a recorded rate is stored per pair-and-date and reused everywhere, or captured per
-  comparison. Reusable is tidier; per-comparison is fewer moving parts.
+- ~~Whether a recorded rate is stored per pair-and-date and reused everywhere, or captured per
+  comparison.~~ **Settled** 2026-08-20, and it turned out to have been settled all along:
+  `CONTEXT.md` § Recorded Rate already said "for one currency pair on one date… remembers the
+  answer", which is the reusable option. Taking the vocabulary as the authority rather than
+  reopening the question was the whole of the decision.
 - Whether the single Admin bit is enough, and whether an Admin should see that other Users exist
   anywhere beyond the invite screen.
 - How résumé generation eventually renders — structured data to Markdown is easy, structured data to a
