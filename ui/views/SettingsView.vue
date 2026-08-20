@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import type { Invite, User } from '../../domain/index.js'
+import { displayCurrency, type Currency, type Invite, type Position, type User } from '../../domain/index.js'
 import {
   AuthError,
   changePassword,
@@ -31,6 +31,36 @@ async function saveStallThreshold(): Promise<void> {
     await saveUser({ ...record.user, stallThresholdDays: stallThresholdDays.value })
   } finally {
     savingThreshold.value = false
+  }
+}
+
+// ── Display Currency (CONTEXT.md § Display Currency) ───────────────────────
+/**
+ * Offered, never required. Left alone it is derived from the earliest Position, which for
+ * a record that never crossed a currency is simply the currency it is kept in — so this
+ * control exists for the careers that did cross one, and everybody else can ignore it.
+ */
+const currenciesOnRecord = computed(() => {
+  const seen = new Map<string, Currency>()
+  for (const position of record.positions as Position[]) seen.set(position.currency.code, position.currency)
+  return [...seen.values()]
+})
+
+const derivedCurrency = computed(() =>
+  record.user ? displayCurrency({ ...(record.user as User), displayCurrency: null }, record.positions as Position[]) : undefined,
+)
+
+const chosenCurrency = ref(record.user?.displayCurrency?.code ?? '')
+const savingCurrency = ref(false)
+
+async function saveDisplayCurrency(): Promise<void> {
+  if (!record.user) return
+  savingCurrency.value = true
+  try {
+    const picked = currenciesOnRecord.value.find((currency) => currency.code === chosenCurrency.value)
+    await saveUser({ ...record.user, displayCurrency: picked ?? null })
+  } finally {
+    savingCurrency.value = false
   }
 }
 
@@ -291,6 +321,25 @@ onMounted(() => {
       </div>
     </section>
 
+    <section v-if="currenciesOnRecord.length > 1" class="panel">
+      <h3>Display Currency</h3>
+      <p class="note">
+        Your record crosses more than one currency. This is the one your comparisons resolve
+        to — what a Switch Premium is measured in, and the scale the compensation chart is
+        drawn against. It never changes what an amount says: every figure still reads in the
+        currency it was actually paid in.
+      </p>
+      <div class="actions">
+        <select v-model="chosenCurrency" class="picker" @change="saveDisplayCurrency">
+          <option value="">Earliest Position ({{ derivedCurrency?.code }})</option>
+          <option v-for="currency in currenciesOnRecord" :key="currency.code" :value="currency.code">
+            {{ currency.code }}
+          </option>
+        </select>
+        <span class="unit">{{ savingCurrency ? 'saving…' : '' }}</span>
+      </div>
+    </section>
+
     <section class="panel">
       <h3>Stall Threshold</h3>
       <p class="note">
@@ -490,6 +539,16 @@ h3 {
   font-size: 13px;
   color: var(--muted);
   margin: 0 0 14px;
+}
+
+.picker {
+  background: var(--page);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-control);
+  padding: 7px 10px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--sans);
 }
 
 .section-h {

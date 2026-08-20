@@ -6,18 +6,26 @@ import {
   eventsNewestFirst,
   formatBytes,
   formatAmount,
+  displayCurrency,
+  isCurrent,
   isOpen,
   isTerminalStage,
   mintId,
+  offerPremium,
   status,
   toMinor,
+  describeRate,
   type Application,
   type ApplicationEvent,
   type Currency,
   type EmploymentType,
+  type Position,
+  type RecordedRate,
   type Round,
   type RoundKind,
   type Stage,
+  type StandingTerms,
+  type User,
 } from '../../domain/index.js'
 import {
   deleteApplication,
@@ -34,6 +42,7 @@ import {
   uploadDocument,
 } from '../record.js'
 import CurrencyFields from '../components/CurrencyFields.vue'
+import RatePrompt from '../components/RatePrompt.vue'
 
 const props = defineProps<{ id: string }>()
 const router = useRouter()
@@ -48,6 +57,33 @@ const events = computed(() =>
 const currentStatus = computed(() => events.value[0]?.stage)
 
 const STAGES: Stage[] = ['saved', 'applied', 'screen', 'assessment', 'interview', 'offer', 'rejected', 'withdrawn']
+
+// ── The offer against what you are paid now (CONTEXT.md § Offered Terms) ───
+/**
+ * Offered Terms are only half a comparison on their own. The other half is the Current
+ * Position's Standing Terms, which is why § Deliberately not building can rule out an
+ * offer-comparison feature — "offered terms beside current terms is the whole of it" —
+ * and why this view had been quietly telling only half the story until now.
+ */
+const currentPosition = computed(() => (record.positions as Position[]).find(isCurrent))
+
+const currentTerms = computed(() =>
+  currentPosition.value
+    ? (record.standingTerms as StandingTerms[]).filter((row) => row.positionId === currentPosition.value!.id)
+    : [],
+)
+
+const offerStep = computed(() => {
+  const offered = application.value?.offeredTerms
+  const into = record.user ? displayCurrency(record.user as User, record.positions as Position[]) : undefined
+  if (!offered || !currentPosition.value || !into) return undefined
+  return offerPremium(
+    { position: currentPosition.value, terms: currentTerms.value },
+    offered,
+    into,
+    record.recordedRates as RecordedRate[],
+  )
+})
 
 // ── Prior Application (CONTEXT.md § Prior Application) ─────────────────────
 const priorApplication = computed(() =>
@@ -484,6 +520,30 @@ async function download(): Promise<void> {
           <div class="line">
             <div class="l">{{ application.offeredTerms!.employmentType.toUpperCase() }} · starts {{ application.offeredTerms!.startDate }}</div>
           </div>
+
+          <div v-if="offerStep" class="against">
+            <template v-if="offerStep.kind === 'available'">
+              <div class="line">
+                <div class="l">
+                  <b :class="offerStep.percent >= 0 ? 'up' : 'down'">
+                    {{ offerStep.percent >= 0 ? '+' : '' }}{{ offerStep.percent.toFixed(1) }}%
+                  </b>
+                  against {{ currentPosition!.company }} — {{ formatAmount(offerStep.from) }} now,
+                  {{ formatAmount(offerStep.to) }} offered.
+                </div>
+              </div>
+              <p v-for="found in offerStep.conversions" :key="found.recorded.id" class="converted">
+                Converted at {{ describeRate(found.recorded) }}, {{ found.recorded.date }}.
+              </p>
+            </template>
+            <RatePrompt
+              v-else-if="offerStep.kind === 'needs-rate'"
+              :from-code="offerStep.fromCode"
+              :to-code="offerStep.toCode"
+              :on="offerStep.on"
+            />
+          </div>
+
           <button v-if="currentStatus !== 'landed'" class="btn land" :disabled="landing" @click="land">
             {{ landing ? 'Landing…' : 'Land this Application' }}
           </button>
@@ -546,6 +606,24 @@ async function download(): Promise<void> {
 </template>
 
 <style scoped>
+.against {
+  border-top: 1px solid var(--hairline);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.against b {
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.against .converted {
+  font-size: 11.5px;
+  color: var(--faint);
+  font-family: var(--mono);
+  margin-top: 4px;
+}
+
 .empty {
   color: var(--muted);
   font-size: 13.5px;
