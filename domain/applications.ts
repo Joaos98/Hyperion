@@ -217,22 +217,19 @@ export function averageDaysToResponse(
   return average(days)
 }
 
-/** Response Rate (CONTEXT.md § Source), broken down by Source, most-applied-to first. */
-export function responseRateBySource(
+/**
+ * Response Rate (CONTEXT.md § Response Rate): how many Applications, out of the total, ever
+ * got a Response. One overall figure, not broken down by Source — a per-Source split just
+ * multiplies the same low-volume noise problem across smaller buckets.
+ */
+export function responseRate(
   applications: readonly Application[],
   eventsByApplication: ReadonlyMap<ApplicationId, readonly ApplicationEvent[]>,
-): { source: string; responded: number; total: number }[] {
-  const bySource = new Map<string, Application[]>()
-  for (const application of applications) {
-    bySource.set(application.source, [...(bySource.get(application.source) ?? []), application])
+): { responded: number; total: number } {
+  return {
+    responded: applications.filter((application) => hasResponse(eventsByApplication.get(application.id) ?? [])).length,
+    total: applications.length,
   }
-  return [...bySource.entries()]
-    .map(([source, group]) => ({
-      source,
-      responded: group.filter((application) => hasResponse(eventsByApplication.get(application.id) ?? [])).length,
-      total: group.length,
-    }))
-    .sort((a, b) => b.total - a.total)
 }
 
 function average(values: readonly number[]): number | undefined {

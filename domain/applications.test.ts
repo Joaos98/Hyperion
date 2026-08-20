@@ -11,7 +11,7 @@ import {
   isTerminalStage,
   landApplication,
   priorApplicationFor,
-  responseRateBySource,
+  responseRate,
   status,
 } from './applications.js'
 import type { Currency } from './money.js'
@@ -283,22 +283,19 @@ describe('averageDaysToResponse', () => {
   })
 })
 
-describe('responseRateBySource', () => {
-  it('groups by Source and counts Responses within each', () => {
-    const apps = [
-      application({ id: 'app-1', source: 'Referral' }),
-      application({ id: 'app-2', source: 'Referral' }),
-      application({ id: 'app-3', source: 'LinkedIn' }),
-    ]
+describe('responseRate', () => {
+  it('counts how many Applications ever got a Response, out of the total', () => {
+    const apps = [application({ id: 'app-1' }), application({ id: 'app-2' }), application({ id: 'app-3' })]
     const byApp = new Map([
       ['app-1', [event('app-1', 'applied', '2026-06-01'), event('app-1', 'screen', '2026-06-05')]],
       ['app-2', [event('app-2', 'applied', '2026-06-01')]],
-      ['app-3', [event('app-3', 'applied', '2026-06-01')]],
+      ['app-3', [event('app-3', 'applied', '2026-06-01'), event('app-3', 'rejected', '2026-06-10')]],
     ])
-    expect(responseRateBySource(apps, byApp)).toEqual([
-      { source: 'Referral', responded: 1, total: 2 },
-      { source: 'LinkedIn', responded: 0, total: 1 },
-    ])
+    expect(responseRate(apps, byApp)).toEqual({ responded: 2, total: 3 })
+  })
+
+  it('is zero-total with no Applications at all', () => {
+    expect(responseRate([], new Map())).toEqual({ responded: 0, total: 0 })
   })
 })
 

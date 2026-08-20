@@ -9,7 +9,7 @@ import {
   isStalled,
   mintId,
   priorApplicationFor,
-  responseRateBySource,
+  responseRate,
   status,
   type Application,
   type ApplicationEvent,
@@ -53,7 +53,7 @@ const needsAttention = computed(() =>
 
 // ── The funnel, response rates and time-to-response (CONTEXT.md § Funnel, § Response) ──
 const funnel = computed(() => funnelCounts(record.applications as Application[], eventsByApplication.value))
-const bySource = computed(() => responseRateBySource(record.applications as Application[], eventsByApplication.value))
+const responded = computed(() => responseRate(record.applications as Application[], eventsByApplication.value))
 const avgResponseDays = computed(() => averageDaysToResponse(record.applications as Application[], eventsByApplication.value))
 const stageLabel: Record<string, string> = {
   applied: 'Applied',
@@ -237,13 +237,10 @@ onMounted(() => {
         </div>
         <div class="response">
           <span class="response-avg">
-            Average time to Response:
+            {{ responded.responded }}/{{ responded.total }} responded ·
+            average time to Response:
             <b>{{ avgResponseDays !== undefined ? `${Math.round(avgResponseDays * 10) / 10}d` : '—' }}</b>
           </span>
-          <div v-for="row in bySource" :key="row.source" class="source-row">
-            <span class="source-name">{{ row.source }}</span>
-            <span class="source-rate">{{ row.responded }}/{{ row.total }} responded</span>
-          </div>
         </div>
       </section>
 
@@ -542,18 +539,6 @@ h3 {
 .response-avg b {
   color: var(--text);
   font-weight: 600;
-}
-
-.source-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: var(--muted);
-  max-width: 320px;
-}
-
-.source-name {
-  color: var(--faint);
 }
 
 .attention {

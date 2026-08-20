@@ -258,8 +258,7 @@ _Avoid_: timeout, cutoff, SLA
 
 **Source**:
 How an Application arrived — a named board, a referral, a recruiter's message, something you found.
-The dimension response rates are most worth broken down by, and the one that survived when grouping
-applications into named campaigns did not.
+The one dimension that survived when grouping applications into named campaigns did not.
 _Avoid_: channel, origin, via
 
 **Response**:
@@ -271,10 +270,11 @@ needs to see. A Rejection is a Response: a closed loop is not the same as an ope
 _Avoid_: reply, callback, feedback
 
 **Response Rate** / **Time to Response**:
-The share of Applications, by Source, that ever got a Response, and how many days Applied took to get
-there. Read from the event log alone, nothing stored separately. Meaningful only in volume — a handful
-of Applications makes either number noise, not signal, so read them as a shape that firms up over time
-rather than a verdict on any one Source this early.
+How many Applications, out of the total, ever got a Response, and how many days Applied took to get
+there. Read from the event log alone, nothing stored separately. One overall figure, not broken down
+by Source — that would just split an already-small number into smaller, noisier ones. Meaningful only
+in volume — a handful of Applications makes either number noise, not signal, so read it as a shape
+that firms up over time rather than a verdict this early.
 _Avoid_: reply rate, success rate, conversion
 
 **Funnel**:
