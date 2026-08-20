@@ -110,6 +110,12 @@ export function today(): string {
   return systemClock.today()
 }
 
+/** Writes an Achievement as given, id included — the primitive `logAchievement` and a restore both build on. */
+export async function saveAchievement(achievement: Achievement): Promise<void> {
+  await store.writeAchievement(achievement)
+  state.achievements = upsert(state.achievements, achievement)
+}
+
 export async function logAchievement(
   text: string,
   positionId: PositionId,
@@ -124,8 +130,7 @@ export async function logAchievement(
     text,
     impact,
   }
-  await store.writeAchievement(achievement)
-  state.achievements = [...state.achievements, achievement]
+  await saveAchievement(achievement)
   return achievement
 }
 
@@ -247,9 +252,18 @@ export async function uploadDocument(label: string, file: File): Promise<Documen
     sizeBytes: bytes.byteLength,
     createdAt: today(),
   }
+  await restoreDocument(meta, bytes)
+  return meta
+}
+
+/**
+ * Writes a Document's metadata and bytes exactly as given, id included — unlike
+ * `uploadDocument`, which always mints a fresh id from a browser `File`. What a restore from
+ * an export uses to bring a Document back with its original identity intact.
+ */
+export async function restoreDocument(meta: DocumentMeta, bytes: Uint8Array): Promise<void> {
   await store.writeDocument(meta, bytes)
   state.documents = upsert(state.documents, meta)
-  return meta
 }
 
 export async function readDocumentBytes(id: DocumentId): Promise<Uint8Array | undefined> {

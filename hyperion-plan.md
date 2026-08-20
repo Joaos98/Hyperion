@@ -682,7 +682,9 @@ other half" of the backup story). The rest in whatever order the need appears.
 
 2026-08-19. `ui/zip.ts` is a small, dependency-free ZIP writer — stored (uncompressed) entries
 only, no DEFLATE — since the payload is career-record JSON plus a handful of résumé-sized files,
-not worth a dependency package.json otherwise carries none of. `ui/export.ts`'s `buildExport()`
+not worth implementing DEFLATE for (`readZip`, added alongside data import below, reads DEFLATE
+entries too, via the platform's own Compression Streams API — still no dependency added).
+`ui/export.ts`'s `buildExport()`
 assembles `data.json` (every row the signed-in User has, Documents' metadata included) plus each
 Document's actual bytes under `documents/`, reading only through `record.ts`'s own state and
 `readDocumentBytes` — so it runs identically over every storage adapter, no new server route or
@@ -691,6 +693,32 @@ server-build-only sections so every build (self-hosted, demo, plain local dev) g
 the browser-storage builds have no `cp hyperion.db` equivalent at all, so the need is if anything
 sharper there. Verified in-browser: the zip's local file headers, CRC-32s and end-of-central-directory
 record all check out, and `data.json` round-trips the real record correctly.
+
+### Shipped — data import
+
+2026-08-19, prompted directly by the observation that an export nobody can read back in is not
+actually a backup. `ui/zip.ts` gained `readZip()`, decoding both stored and DEFLATE-compressed
+entries (the platform's `DecompressionStream`, no dependency) — an export re-saved by an ordinary
+zip tool along the way is likely DEFLATE, not stored, so reading only what `buildZip` itself writes
+would have made the round trip fragile the moment a person actually touched the file.
+
+`ui/import.ts`'s `applyImport()` writes everything back through `record.ts`'s own save* actions —
+never a new port method — so a restore can't write anything the app itself wouldn't accept from the
+UI. Additive by design: every row writes by id, so importing onto existing data merges rather than
+replaces it, and nothing is ever deleted; re-running the same import twice is a no-op. The one real
+correctness point: every row's `userId` is rewritten to the *signed-in* User's own id rather than
+trusted from the archive, since an export is usually imported into a different account than the one
+that made it (a fresh self-hosted install, a new browser) — writing Position/Achievement/
+Application/Document rows with someone else's userId is refused outright by the server's own
+write-ownership check. `record.ts` gained two primitives `logAchievement`/`uploadDocument` didn't
+expose — `saveAchievement()` and `restoreDocument()` — since both of those always mint a fresh id,
+and a restore needs to write a row's *original* id back.
+
+Settings gained an "Import your data" file picker beside Export, with a confirm prompt stating
+plainly that matching ids get overwritten and nothing is deleted. Verified in-browser with a full
+round trip: exported the real record, re-imported the same zip, and confirmed every count matched
+with no duplication anywhere (Positions, Applications and their Events all stayed at their original
+counts after the "restore").
 
 ### Shipped — Prior Application
 
@@ -747,9 +775,7 @@ is the applicant's own action and proves nothing about the other side, so an App
 straight from Applied to Withdrawn, nothing between, counts as never having gotten one. Everything
 else past Applied does, Rejected included: a closed loop is a Response, distinct from silence nobody
 ever broke. An Application Interviewed and then Withdrawn still counts — the Response came first.
-`domain/applications.ts`'s `hasResponse()`/`daysToResponse()` carry this; `responseRateBySource()`
-groups by Source per CONTEXT.md's own note that it's "the dimension response rates are most worth
-broken down by."
+`domain/applications.ts`'s `hasResponse()`/`daysToResponse()` carry this.
 
 The Funnel counts, per Stage, how many Applications *ever* reached it — not "currently at or past,"
 since Stage isn't ordinal (§ Stage): an Application that skipped Screen entirely, Applied straight to
@@ -757,10 +783,22 @@ Interview, correctly never counts toward Screen. Rejected and Withdrawn are exit
 `funnelCounts()` returns fixed order: Applied, Screen, Assessment, Interview, Offer, Landed.
 
 No new route — a **Pipeline** section joined the top of `ApplicationsView.vue`, above Needs
-attention: funnel counts, average time to Response, and a responded/total line per Source. Numbers
-are reported plainly, no percentages under low volume and no color coding — CONTEXT.md is explicit
-these read as noise before there's real volume behind them, and nothing about how they're shown
-should imply otherwise.
+attention: funnel counts, and a responded/total line alongside average time to Response.
+**Revised the same day**: `responseRateBySource()` originally broke that line down by Source, per
+Source's own CONTEXT.md note that it was "the dimension response rates are most worth broken down
+by" — dropped on direct feedback, since splitting an already-small number into smaller per-Source
+buckets multiplies the low-volume noise problem rather than managing it. `responseRate()` replaced
+it, one overall figure; both CONTEXT.md entries updated to match. Numbers are reported plainly
+throughout — no percentages under low volume, no color coding.
+
+### Shipped — editing an Application's Company, Title, Source and Posting URL
+
+2026-08-19. A real gap, not a planned item: Advertised Range, Offered Terms and the attached
+Document all had an edit path from early on; Company, Title, Source and Posting URL — set once in
+the Add-Application form — never did. `ApplicationView.vue`'s header gained the same "edit" affordance
+the other sections already use, opening an inline form pre-filled from the current values. No domain
+or storage change — `saveApplication` already accepted a full row, this just gave the UI a way to
+send one back with those four fields changed.
 
 ### When a search starts
 

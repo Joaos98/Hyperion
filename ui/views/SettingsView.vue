@@ -12,6 +12,7 @@ import {
   resetUserPassword,
 } from '../auth.js'
 import { buildExport } from '../export.js'
+import { applyImport, type ImportSummary } from '../import.js'
 import { record, saveUser, today } from '../record.js'
 import { isServerBuild } from '../store.js'
 
@@ -53,6 +54,31 @@ async function exportData(): Promise<void> {
     exportError.value = String(cause)
   } finally {
     exporting.value = false
+  }
+}
+
+const importInput = ref<HTMLInputElement | null>(null)
+const importing = ref(false)
+const importError = ref('')
+const importSummary = ref<ImportSummary | null>(null)
+
+/** Existing rows with matching ids are overwritten; nothing already here is ever deleted. */
+async function importData(event: Event): Promise<void> {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  ;(event.target as HTMLInputElement).value = ''
+  if (!file) return
+  if (!window.confirm(`Import "${file.name}"? Matching rows will be overwritten — nothing already here will be deleted.`)) return
+
+  importError.value = ''
+  importSummary.value = null
+  importing.value = true
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    importSummary.value = await applyImport(bytes)
+  } catch (cause) {
+    importError.value = String(cause instanceof Error ? cause.message : cause)
+  } finally {
+    importing.value = false
   }
 }
 
@@ -186,6 +212,23 @@ onMounted(() => {
         <button class="ghost" :disabled="exporting" @click="exportData">
           {{ exporting ? 'Exporting…' : 'Export your data' }}
         </button>
+      </div>
+
+      <p class="note import-note">
+        Restores from a zip this same export produced. Rows with matching ids are overwritten;
+        nothing already here is deleted, so importing onto existing data merges rather than
+        replaces it.
+      </p>
+      <p v-if="importError" class="error">{{ importError }}</p>
+      <p v-if="importSummary" class="success">
+        Imported {{ importSummary.positions }} Positions, {{ importSummary.applications }} Applications,
+        {{ importSummary.achievements }} Achievements, {{ importSummary.documents }} Documents.
+      </p>
+      <div class="actions">
+        <button class="ghost" :disabled="importing" @click="importInput?.click()">
+          {{ importing ? 'Importing…' : 'Import your data' }}
+        </button>
+        <input ref="importInput" type="file" accept=".zip" class="hidden-input" @change="importData" />
       </div>
     </section>
 
@@ -398,6 +441,16 @@ h3 {
   color: var(--text);
   font-size: 13.5px;
   font-family: var(--sans);
+}
+
+.import-note {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline);
+}
+
+.hidden-input {
+  display: none;
 }
 
 .error {

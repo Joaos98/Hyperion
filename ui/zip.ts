@@ -1,8 +1,11 @@
 /**
- * A minimal ZIP writer — stored (uncompressed) entries only, no external dependency. The
- * whole-app export (hyperion-plan.md § The application record) is career-record JSON plus
- * a handful of résumé-sized files; implementing DEFLATE for that is not worth a dependency
- * the rest of this codebase otherwise carries none of (package.json's own restraint).
+ * A minimal ZIP reader and writer, no external dependency. `buildZip` writes stored
+ * (uncompressed) entries only — the whole-app export (hyperion-plan.md § The application
+ * record) is career-record JSON plus a handful of résumé-sized files, not worth implementing
+ * DEFLATE for. `readZip` reads both: an archive re-saved by an ordinary zip tool (someone
+ * extracting an export to look at it, then re-zipping it) is likely DEFLATE-compressed, and
+ * the browser's own Compression Streams API decodes that without needing a hand-rolled
+ * inflate — no dependency added, just a platform API this codebase hadn't reached for yet.
  */
 
 export interface ZipEntry {
@@ -118,4 +121,63 @@ export function buildZip(entries: ZipEntry[]): Uint8Array {
   ])
 
   return concat([...localParts, centralDirectory, endOfCentralDirectory])
+}
+
+const decoder = new TextDecoder()
+
+/** Reads every entry out of a ZIP archive, decompressing stored or DEFLATE-compressed entries alike. */
+export async function readZip(bytes: Uint8Array): Promise<ZipEntry[]> {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const eocdOffset = findEndOfCentralDirectory(bytes, view)
+  const entryCount = view.getUint16(eocdOffset + 10, true)
+  let offset = view.getUint32(eocdOffset + 16, true) // central directory offset
+
+  const entries: ZipEntry[] = []
+  for (let i = 0; i < entryCount; i++) {
+    if (view.getUint32(offset, true) !== 0x02014b50) {
+      throw new Error('This is not a readable zip: the central directory is malformed')
+    }
+    const compression = view.getUint16(offset + 10, true)
+    const compressedSize = view.getUint32(offset + 20, true)
+    const nameLength = view.getUint16(offset + 28, true)
+    const extraLength = view.getUint16(offset + 30, true)
+    const commentLength = view.getUint16(offset + 32, true)
+    const localHeaderOffset = view.getUint32(offset + 42, true)
+    const name = decoder.decode(bytes.slice(offset + 46, offset + 46 + nameLength))
+
+    const localNameLength = view.getUint16(localHeaderOffset + 26, true)
+    const localExtraLength = view.getUint16(localHeaderOffset + 28, true)
+    const dataStart = localHeaderOffset + 30 + localNameLength + localExtraLength
+    const raw = bytes.slice(dataStart, dataStart + compressedSize)
+
+    entries.push({ name, data: await decompress(raw, compression) })
+    offset += 46 + nameLength + extraLength + commentLength
+  }
+  return entries
+}
+
+/** Zip files with no comment carry the record 22 bytes from the end; a comment pushes it earlier. */
+function findEndOfCentralDirectory(bytes: Uint8Array, view: DataView): number {
+  const searchFloor = Math.max(0, bytes.length - 22 - 0xffff)
+  for (let offset = bytes.length - 22; offset >= searchFloor; offset--) {
+    if (view.getUint32(offset, true) === 0x06054b50) return offset
+  }
+  throw new Error('This is not a readable zip: no end-of-central-directory record found')
+}
+
+async function decompress(bytes: Uint8Array, method: number): Promise<Uint8Array> {
+  if (method === 0) return bytes
+  if (method !== 8) throw new Error(`This zip uses a compression method Hyperion cannot read (${method})`)
+  const stream = new DecompressionStream('deflate-raw')
+  const writer = stream.writable.getWriter()
+  // Same ArrayBufferLike-vs-ArrayBuffer generic mismatch as Blob's BlobPart elsewhere in this codebase.
+  void writer.write(bytes as BufferSource).then(() => writer.close())
+  const chunks: Uint8Array[] = []
+  const reader = stream.readable.getReader()
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+  }
+  return concat(chunks)
 }

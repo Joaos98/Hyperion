@@ -12,7 +12,8 @@ import type {
 import { readDocumentBytes, record, today } from './record.js'
 import { buildZip, type ZipEntry } from './zip.js'
 
-interface ExportedRecord {
+/** The shape `data.json` holds inside an export — also what an import reads back. */
+export interface ExportedRecord {
   exportedAt: string
   user: User
   positions: Position[]
@@ -52,7 +53,7 @@ export async function buildExport(): Promise<Uint8Array> {
   const entries: ZipEntry[] = [{ name: 'data.json', data: encodeJson(data) }]
   for (const document of record.documents) {
     const bytes = await readDocumentBytes(document.id)
-    if (bytes) entries.push({ name: `documents/${document.id}-${sanitized(document.filename)}`, data: bytes })
+    if (bytes) entries.push({ name: documentEntryName(document.id, document.filename), data: bytes })
   }
 
   return buildZip(entries)
@@ -62,7 +63,12 @@ function encodeJson(data: ExportedRecord): Uint8Array {
   return new TextEncoder().encode(JSON.stringify(data, null, 2))
 }
 
-/** A zip entry name is a path — a Document's own filename can't be allowed to make one. */
-function sanitized(filename: string): string {
-  return filename.replace(/[/\\]/g, '_')
+/**
+ * The zip entry name a Document's bytes are written under — id-prefixed, since a zip entry
+ * name is a path and a Document's own filename can't be allowed to make one (stripped of
+ * `/`/`\`), and two Documents can otherwise share a filename. `applyImport` reads the same
+ * name back to match bytes to metadata, so the two must never drift apart.
+ */
+export function documentEntryName(id: string, filename: string): string {
+  return `documents/${id}-${filename.replace(/[/\\]/g, '_')}`
 }
