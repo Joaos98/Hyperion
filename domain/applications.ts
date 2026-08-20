@@ -4,6 +4,7 @@ import type {
   Application,
   ApplicationEvent,
   ApplicationEventId,
+  ApplicationId,
   Position,
   PositionId,
   Stage,
@@ -153,4 +154,88 @@ function similarTitle(a: string, b: string): boolean {
   const x = normalized(a)
   const y = normalized(b)
   return x === y || x.includes(y) || y.includes(x)
+}
+
+// ── The funnel, response rates and time-to-response (CONTEXT.md § Funnel, § Response) ──
+
+/** A Stage counting as a milestone reached, in the fixed order the Funnel measures. */
+const FUNNEL_STAGES: readonly Stage[] = ['applied', 'screen', 'assessment', 'interview', 'offer', 'landed']
+
+/**
+ * A Stage counting as evidence an employer actually responded (CONTEXT.md § Response) —
+ * every Stage past Applied except Withdrawn itself, which is the applicant's own action and
+ * proves nothing about the other side. An Application that reached Interview and was then
+ * Withdrawn still counts as having gotten a response; one that went straight from Applied to
+ * Withdrawn, with nothing between, does not.
+ */
+const RESPONSE_STAGES: readonly Stage[] = ['screen', 'assessment', 'interview', 'offer', 'rejected', 'landed']
+
+/**
+ * How many Applications ever reached each Stage in `FUNNEL_STAGES`, in order (CONTEXT.md §
+ * Funnel). "Reached" means an Event at that Stage exists at some point, not "is currently
+ * at or past it" — Stage is not ordinal in the data, so an Application that went straight
+ * from Applied to Interview, skipping Screen, correctly never counts toward Screen.
+ */
+export function funnelCounts(
+  applications: readonly Application[],
+  eventsByApplication: ReadonlyMap<ApplicationId, readonly ApplicationEvent[]>,
+): { stage: Stage; count: number }[] {
+  return FUNNEL_STAGES.map((stage) => ({
+    stage,
+    count: applications.filter((application) => (eventsByApplication.get(application.id) ?? []).some((event) => event.stage === stage))
+      .length,
+  }))
+}
+
+/** Whether an Application ever got a Response, in the sense `RESPONSE_STAGES` defines. */
+export function hasResponse(events: readonly ApplicationEvent[]): boolean {
+  return events.some((event) => RESPONSE_STAGES.includes(event.stage))
+}
+
+/**
+ * Days from Applied to the first Response, or `undefined` without both — an Application
+ * still waiting, or one Applied to but never actually sent (Saved only), has no answer yet
+ * rather than a zero standing in for one.
+ */
+export function daysToResponse(events: readonly ApplicationEvent[]): number | undefined {
+  const applied = events.find((event) => event.stage === 'applied')
+  if (!applied) return undefined
+  const responses = events.filter((event) => RESPONSE_STAGES.includes(event.stage) && event.date >= applied.date)
+  if (responses.length === 0) return undefined
+  const earliest = responses.reduce((min, event) => (event.date < min ? event.date : min), responses[0]!.date)
+  return daysBetween(applied.date, earliest)
+}
+
+/** The average days to first Response across every Application that got one (CONTEXT.md § Response). */
+export function averageDaysToResponse(
+  applications: readonly Application[],
+  eventsByApplication: ReadonlyMap<ApplicationId, readonly ApplicationEvent[]>,
+): number | undefined {
+  const days = applications
+    .map((application) => daysToResponse(eventsByApplication.get(application.id) ?? []))
+    .filter((value): value is number => value !== undefined)
+  return average(days)
+}
+
+/** Response Rate (CONTEXT.md § Source), broken down by Source, most-applied-to first. */
+export function responseRateBySource(
+  applications: readonly Application[],
+  eventsByApplication: ReadonlyMap<ApplicationId, readonly ApplicationEvent[]>,
+): { source: string; responded: number; total: number }[] {
+  const bySource = new Map<string, Application[]>()
+  for (const application of applications) {
+    bySource.set(application.source, [...(bySource.get(application.source) ?? []), application])
+  }
+  return [...bySource.entries()]
+    .map(([source, group]) => ({
+      source,
+      responded: group.filter((application) => hasResponse(eventsByApplication.get(application.id) ?? [])).length,
+      total: group.length,
+    }))
+    .sort((a, b) => b.total - a.total)
+}
+
+function average(values: readonly number[]): number | undefined {
+  if (values.length === 0) return undefined
+  return values.reduce((sum, value) => sum + value, 0) / values.length
 }

@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { DomainError } from './errors.js'
-import { eventsNewestFirst, isOpen, isStalled, isTerminalStage, landApplication, priorApplicationFor, status } from './applications.js'
+import {
+  averageDaysToResponse,
+  daysToResponse,
+  eventsNewestFirst,
+  funnelCounts,
+  hasResponse,
+  isOpen,
+  isStalled,
+  isTerminalStage,
+  landApplication,
+  priorApplicationFor,
+  responseRateBySource,
+  status,
+} from './applications.js'
 import type { Currency } from './money.js'
 import type { Application, ApplicationEvent } from './types.js'
 
@@ -8,6 +21,21 @@ const EUR: Currency = { code: 'EUR', symbol: '€', decimals: 2 }
 
 function event(applicationId: string, stage: ApplicationEvent['stage'], date: string, id = `${stage}-${date}`): ApplicationEvent {
   return { id, applicationId, stage, date, note: null }
+}
+
+function application(overrides: Partial<Application> & { id: string }): Application {
+  return {
+    userId: 'user-1',
+    company: 'Kestrel Systems',
+    title: 'Backend Engineer',
+    source: 'Referral',
+    postingUrl: null,
+    advertisedRange: null,
+    offeredTerms: null,
+    documentId: null,
+    priorApplicationId: null,
+    ...overrides,
+  }
 }
 
 describe('isTerminalStage', () => {
@@ -157,22 +185,6 @@ describe('landApplication', () => {
 })
 
 describe('priorApplicationFor', () => {
-  function application(overrides: Partial<Application>): Application {
-    return {
-      id: 'app-1',
-      userId: 'user-1',
-      company: 'Kestrel Systems',
-      title: 'Backend Engineer',
-      source: 'Referral',
-      postingUrl: null,
-      advertisedRange: null,
-      offeredTerms: null,
-      documentId: null,
-      priorApplicationId: null,
-      ...overrides,
-    }
-  }
-
   it('is undefined with no history at all', () => {
     expect(priorApplicationFor({ company: 'Kestrel Systems', title: 'Backend Engineer', postingUrl: null }, [])).toBeUndefined()
   })
@@ -203,5 +215,117 @@ describe('priorApplicationFor', () => {
     const newer = application({ id: 'app-newer', title: 'Backend Engineer' })
     const match = priorApplicationFor({ company: 'Kestrel Systems', title: 'Backend Engineer', postingUrl: null }, [older, newer])
     expect(match?.id).toBe('app-newer')
+  })
+})
+
+describe('hasResponse', () => {
+  it('is true once a Screen, Assessment, Interview, Offer or Landed Event exists', () => {
+    expect(hasResponse([event('app-1', 'applied', '2026-06-01'), event('app-1', 'screen', '2026-06-05')])).toBe(true)
+  })
+
+  it('is true for a Rejection — a closed loop is still a Response', () => {
+    expect(hasResponse([event('app-1', 'applied', '2026-06-01'), event('app-1', 'rejected', '2026-06-05')])).toBe(true)
+  })
+
+  it('is false for a bare Withdrawal with nothing between Applied and it', () => {
+    expect(hasResponse([event('app-1', 'applied', '2026-06-01'), event('app-1', 'withdrawn', '2026-06-20')])).toBe(false)
+  })
+
+  it('is true for an Interview followed by a Withdrawal — the response came first', () => {
+    expect(
+      hasResponse([
+        event('app-1', 'applied', '2026-06-01'),
+        event('app-1', 'interview', '2026-06-10'),
+        event('app-1', 'withdrawn', '2026-06-20'),
+      ]),
+    ).toBe(true)
+  })
+
+  it('is false with only Saved and Applied', () => {
+    expect(hasResponse([event('app-1', 'saved', '2026-06-01'), event('app-1', 'applied', '2026-06-02')])).toBe(false)
+  })
+})
+
+describe('daysToResponse', () => {
+  it('is the days from Applied to the earliest Response', () => {
+    const events = [event('app-1', 'applied', '2026-06-01'), event('app-1', 'screen', '2026-06-08')]
+    expect(daysToResponse(events)).toBe(7)
+  })
+
+  it('is undefined without an Applied Event', () => {
+    expect(daysToResponse([event('app-1', 'saved', '2026-06-01')])).toBeUndefined()
+  })
+
+  it('is undefined without a Response yet', () => {
+    expect(daysToResponse([event('app-1', 'applied', '2026-06-01')])).toBeUndefined()
+  })
+
+  it('ignores a bare Withdrawal — that is not a Response', () => {
+    expect(daysToResponse([event('app-1', 'applied', '2026-06-01'), event('app-1', 'withdrawn', '2026-06-20')])).toBeUndefined()
+  })
+})
+
+describe('averageDaysToResponse', () => {
+  it('averages only the Applications that got a Response', () => {
+    const apps = [application({ id: 'app-1' }), application({ id: 'app-2' }), application({ id: 'app-3' })]
+    const byApp = new Map([
+      ['app-1', [event('app-1', 'applied', '2026-06-01'), event('app-1', 'screen', '2026-06-05')]], // 4 days
+      ['app-2', [event('app-2', 'applied', '2026-06-01'), event('app-2', 'screen', '2026-06-11')]], // 10 days
+      ['app-3', [event('app-3', 'applied', '2026-06-01')]], // no Response — excluded
+    ])
+    expect(averageDaysToResponse(apps, byApp)).toBe(7)
+  })
+
+  it('is undefined when nothing has been Responded to', () => {
+    const apps = [application({ id: 'app-1' })]
+    const byApp = new Map([['app-1', [event('app-1', 'applied', '2026-06-01')]]])
+    expect(averageDaysToResponse(apps, byApp)).toBeUndefined()
+  })
+})
+
+describe('responseRateBySource', () => {
+  it('groups by Source and counts Responses within each', () => {
+    const apps = [
+      application({ id: 'app-1', source: 'Referral' }),
+      application({ id: 'app-2', source: 'Referral' }),
+      application({ id: 'app-3', source: 'LinkedIn' }),
+    ]
+    const byApp = new Map([
+      ['app-1', [event('app-1', 'applied', '2026-06-01'), event('app-1', 'screen', '2026-06-05')]],
+      ['app-2', [event('app-2', 'applied', '2026-06-01')]],
+      ['app-3', [event('app-3', 'applied', '2026-06-01')]],
+    ])
+    expect(responseRateBySource(apps, byApp)).toEqual([
+      { source: 'Referral', responded: 1, total: 2 },
+      { source: 'LinkedIn', responded: 0, total: 1 },
+    ])
+  })
+})
+
+describe('funnelCounts', () => {
+  it('counts an Application toward every Stage it ever reached, not just its current one', () => {
+    const apps = [application({ id: 'app-1' })]
+    const byApp = new Map([
+      [
+        'app-1',
+        [event('app-1', 'applied', '2026-06-01'), event('app-1', 'interview', '2026-06-10'), event('app-1', 'rejected', '2026-06-20')],
+      ],
+    ])
+    const counts = funnelCounts(apps, byApp)
+    expect(counts).toEqual([
+      { stage: 'applied', count: 1 },
+      { stage: 'screen', count: 0 },
+      { stage: 'assessment', count: 0 },
+      { stage: 'interview', count: 1 },
+      { stage: 'offer', count: 0 },
+      { stage: 'landed', count: 0 },
+    ])
+  })
+
+  it('never counts Rejected or Withdrawn as funnel points', () => {
+    const apps = [application({ id: 'app-1' })]
+    const byApp = new Map([['app-1', [event('app-1', 'applied', '2026-06-01'), event('app-1', 'rejected', '2026-06-05')]]])
+    const counts = funnelCounts(apps, byApp)
+    expect(counts.every((row) => row.stage !== 'rejected' && row.stage !== 'withdrawn')).toBe(true)
   })
 })

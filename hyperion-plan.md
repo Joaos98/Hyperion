@@ -261,7 +261,9 @@ applications go quiet — so it waits until there is a search to watch.
   a block; only an Open application to the same posting is worth raising a voice for. Another item not
   actually waiting on a live pipeline to tune against — **shipped**, below, once real Applications
   existed to have history with.
-- **The funnel**, response rates and time-to-response
+- **The funnel**, response rates and time-to-response — **shipped**, below, ahead of the real-search
+  volume the numbers will actually need to mean much — by direct request, mechanism now rather than
+  later.
 - **Stall detection** and the attention view — **shipped**, below. The one item in this section that
   really did need to wait: the mechanism needed no tuning to build, but the threshold's default
   (21 days) is only as good as a guess until watched against real applications going quiet.
@@ -733,10 +735,37 @@ those are currently Stalled — the same rows still appear in Open too, since at
 a replacement for the ordinary list. Reported neutrally throughout, per CONTEXT.md: a "quiet 25d" chip,
 not a warning color or an alarm.
 
+### Shipped — the funnel, response rates and time-to-response
+
+2026-08-19, by direct request rather than waiting on real search volume — this is the one item in
+"When a search starts" that carried no prior CONTEXT.md entries, so the definitions below are new,
+settled while implementing rather than agreed first. CONTEXT.md gained **Response**, **Response
+Rate** / **Time to Response** and **Funnel** to record them.
+
+The one real judgment call: what counts as a **Response**. Not every Event past Applied — Withdrawn
+is the applicant's own action and proves nothing about the other side, so an Application that goes
+straight from Applied to Withdrawn, nothing between, counts as never having gotten one. Everything
+else past Applied does, Rejected included: a closed loop is a Response, distinct from silence nobody
+ever broke. An Application Interviewed and then Withdrawn still counts — the Response came first.
+`domain/applications.ts`'s `hasResponse()`/`daysToResponse()` carry this; `responseRateBySource()`
+groups by Source per CONTEXT.md's own note that it's "the dimension response rates are most worth
+broken down by."
+
+The Funnel counts, per Stage, how many Applications *ever* reached it — not "currently at or past,"
+since Stage isn't ordinal (§ Stage): an Application that skipped Screen entirely, Applied straight to
+Interview, correctly never counts toward Screen. Rejected and Withdrawn are exits, not funnel points.
+`funnelCounts()` returns fixed order: Applied, Screen, Assessment, Interview, Offer, Landed.
+
+No new route — a **Pipeline** section joined the top of `ApplicationsView.vue`, above Needs
+attention: funnel counts, average time to Response, and a responded/total line per Source. Numbers
+are reported plainly, no percentages under low volume and no color coding — CONTEXT.md is explicit
+these read as noise before there's real volume behind them, and nothing about how they're shown
+should imply otherwise.
+
 ### When a search starts
 
-Rounds, prior-application awareness and stall detection are shipped, above. The funnel and response
-rates remain — built while watching real applications, which is the only way they would be right.
+Rounds, prior-application awareness, stall detection, the funnel and response rates are all shipped,
+above — everything originally listed here is now built.
 
 ### Decide after real use
 

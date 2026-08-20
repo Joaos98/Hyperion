@@ -1,7 +1,20 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { daysBetween, isOpen, isStalled, mintId, priorApplicationFor, status, type Application, type ApplicationEvent, type Stage } from '../../domain/index.js'
+import {
+  averageDaysToResponse,
+  daysBetween,
+  funnelCounts,
+  isOpen,
+  isStalled,
+  mintId,
+  priorApplicationFor,
+  responseRateBySource,
+  status,
+  type Application,
+  type ApplicationEvent,
+  type Stage,
+} from '../../domain/index.js'
 import { currentUserId, record, saveApplication, saveApplicationEvent, today } from '../record.js'
 
 const route = useRoute()
@@ -37,6 +50,19 @@ const stallThresholdDays = computed(() => record.user?.stallThresholdDays ?? 21)
 const needsAttention = computed(() =>
   open.value.filter((application) => isStalled(eventsByApplication.value.get(application.id) ?? [], today(), stallThresholdDays.value)),
 )
+
+// ── The funnel, response rates and time-to-response (CONTEXT.md § Funnel, § Response) ──
+const funnel = computed(() => funnelCounts(record.applications as Application[], eventsByApplication.value))
+const bySource = computed(() => responseRateBySource(record.applications as Application[], eventsByApplication.value))
+const avgResponseDays = computed(() => averageDaysToResponse(record.applications as Application[], eventsByApplication.value))
+const stageLabel: Record<string, string> = {
+  applied: 'Applied',
+  screen: 'Screen',
+  assessment: 'Assessment',
+  interview: 'Interview',
+  offer: 'Offer',
+  landed: 'Landed',
+}
 
 function latestDate(application: Application): number {
   const events = eventsByApplication.value.get(application.id) ?? []
@@ -201,6 +227,26 @@ onMounted(() => {
     </div>
 
     <template v-else>
+      <section class="pipeline">
+        <h3>Pipeline</h3>
+        <div class="funnel">
+          <div v-for="row in funnel" :key="row.stage" class="funnel-row">
+            <span class="funnel-label">{{ stageLabel[row.stage] }}</span>
+            <span class="funnel-count">{{ row.count }}</span>
+          </div>
+        </div>
+        <div class="response">
+          <span class="response-avg">
+            Average time to Response:
+            <b>{{ avgResponseDays !== undefined ? `${Math.round(avgResponseDays * 10) / 10}d` : '—' }}</b>
+          </span>
+          <div v-for="row in bySource" :key="row.source" class="source-row">
+            <span class="source-name">{{ row.source }}</span>
+            <span class="source-rate">{{ row.responded }}/{{ row.total }} responded</span>
+          </div>
+        </div>
+      </section>
+
       <section v-if="needsAttention.length > 0" class="attention">
         <h3>Needs attention <span class="count">{{ needsAttention.length }}</span></h3>
         <RouterLink v-for="application in needsAttention" :key="application.id" :to="`/applications/${application.id}`" class="row">
@@ -439,6 +485,74 @@ h3 {
 .ago {
   font-family: var(--mono);
   font-size: 11px;
+  color: var(--faint);
+}
+
+.pipeline {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  padding: 16px 18px;
+  margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pipeline h3 {
+  margin-bottom: 0;
+}
+
+.funnel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+.funnel-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.funnel-label {
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.funnel-count {
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--text);
+}
+
+.response {
+  border-top: 1px solid var(--hairline);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.response-avg {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.response-avg b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.source-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 320px;
+}
+
+.source-name {
   color: var(--faint);
 }
 

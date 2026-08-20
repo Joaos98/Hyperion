@@ -262,6 +262,29 @@ The dimension response rates are most worth broken down by, and the one that sur
 applications into named campaigns did not.
 _Avoid_: channel, origin, via
 
+**Response**:
+Evidence an employer actually did something — any Application Event past Applied, except Withdrawn
+itself, which is the applicant's own action and proves nothing about the other side. An Application
+Interviewed and then Withdrawn still counts as Responded to; one that goes straight from Applied to
+Withdrawn, nothing between, does not — the silence it withdrew from is exactly what a Response Rate
+needs to see. A Rejection is a Response: a closed loop is not the same as an open one nobody answered.
+_Avoid_: reply, callback, feedback
+
+**Response Rate** / **Time to Response**:
+The share of Applications, by Source, that ever got a Response, and how many days Applied took to get
+there. Read from the event log alone, nothing stored separately. Meaningful only in volume — a handful
+of Applications makes either number noise, not signal, so read them as a shape that firms up over time
+rather than a verdict on any one Source this early.
+_Avoid_: reply rate, success rate, conversion
+
+**Funnel**:
+How many Applications ever reached each Stage — Applied, Screen, Assessment, Interview, Offer,
+Landed — regardless of what happened after. "Reached" is not "currently at or past": Stage is not
+ordinal (§ Stage), so an Application that went straight from Applied to Interview, skipping Screen,
+correctly never counts toward Screen. Rejected and Withdrawn are exits, not funnel points — where an
+Application left the pipeline, not a place it was heading.
+_Avoid_: pipeline, conversion funnel, stages funnel
+
 **Round**:
 One step a company actually put you through: when, its kind — Interview or Take-home — who if
 anyone, and afterwards the notes on how it went. A phone screen, a technical conversation, a
