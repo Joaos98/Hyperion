@@ -18,6 +18,7 @@ describe('SqliteStore — beyond the shared contract', () => {
       aiApiKey: null,
       aiModel: null,
       compensationDisplay: 'annual',
+      displayCurrency: null,
     })
     const reopened = new SqliteStore(db)
     expect((await reopened.loadUserRecord('user-1'))?.user.displayName).toBe('João')
@@ -27,7 +28,7 @@ describe('SqliteStore — beyond the shared contract', () => {
     const db = new DatabaseConstructor(':memory:')
     new SqliteStore(db)
     expect(() => new SqliteStore(db)).not.toThrow()
-    expect(db.pragma('user_version', { simple: true })).toBe(5)
+    expect(db.pragma('user_version', { simple: true })).toBe(7)
   })
 
   it('refuses a Standing Terms row whose Position does not exist', async () => {
@@ -42,6 +43,7 @@ describe('SqliteStore — beyond the shared contract', () => {
       aiApiKey: null,
       aiModel: null,
       compensationDisplay: 'annual',
+      displayCurrency: null,
     })
     await expect(
       store.writeStandingTerms({
@@ -73,6 +75,7 @@ describe('SqliteStore — auth', () => {
       aiApiKey: null,
       aiModel: null,
       compensationDisplay: 'annual',
+      displayCurrency: null,
     })
   }
 

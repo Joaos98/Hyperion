@@ -15,6 +15,8 @@ import {
   type PaymentId,
   type Position,
   type PositionId,
+  type RecordedRate,
+  type RecordedRateId,
   type Round,
   type RoundId,
   type StandingTerms,
@@ -35,6 +37,7 @@ interface RecordState {
   applications: Application[]
   applicationEvents: ApplicationEvent[]
   rounds: Round[]
+  recordedRates: RecordedRate[]
   documents: DocumentMeta[]
 }
 
@@ -49,6 +52,7 @@ const state = reactive<RecordState>({
   applications: [],
   applicationEvents: [],
   rounds: [],
+  recordedRates: [],
   documents: [],
 })
 
@@ -99,6 +103,7 @@ async function refresh(): Promise<void> {
     state.applications = loaded.applications
     state.applicationEvents = loaded.applicationEvents
     state.rounds = loaded.rounds
+    state.recordedRates = loaded.recordedRates
     state.documents = loaded.documents
   }
   state.loading = false
@@ -213,6 +218,21 @@ export async function saveRound(round: Round): Promise<void> {
 export async function deleteRound(id: RoundId): Promise<void> {
   await store.deleteRound(currentUserId(), id)
   state.rounds = state.rounds.filter((row) => row.id !== id)
+}
+
+/**
+ * Remembers a rate a User was asked for because a comparison could not be answered
+ * without it (CONTEXT.md § Recorded Rate). Every comparison across the same pair reads
+ * it afterwards, so the asking happens once rather than at each figure.
+ */
+export async function saveRecordedRate(rate: RecordedRate): Promise<void> {
+  await store.writeRecordedRate(rate)
+  state.recordedRates = upsert(state.recordedRates, rate)
+}
+
+export async function deleteRecordedRate(id: RecordedRateId): Promise<void> {
+  await store.deleteRecordedRate(currentUserId(), id)
+  state.recordedRates = state.recordedRates.filter((row) => row.id !== id)
 }
 
 /**

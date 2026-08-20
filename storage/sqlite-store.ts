@@ -19,6 +19,8 @@ import type {
   PaymentId,
   Position,
   PositionId,
+  RecordedRate,
+  RecordedRateId,
   Round,
   RoundId,
   RoundKind,
@@ -219,6 +221,45 @@ const migrations: ((db: Database) => void)[] = [
       alter table users add column ai_model text;
     `)
   },
+
+  /**
+   * 6 — Recorded Rates (CONTEXT.md § Recorded Rate). Scoped to the User rather than to
+   * either Position in a comparison: a rate is a fact about two currencies on a date, not
+   * about the two jobs that first needed it, so the next comparison across the same pair
+   * reuses it instead of asking again. The pair is two codes and no symbols — the symbol
+   * belongs to the Position that chose the currency, and a second copy here could only go
+   * stale against it.
+   */
+  (db) => {
+    db.exec(`
+      create table recorded_rates (
+        id text primary key,
+        user_id text not null references users(id) on delete cascade,
+        from_code text not null,
+        to_code text not null,
+        date text not null,
+        rate_minor integer not null,
+        rate_decimals integer not null
+      );
+
+      create index recorded_rates_user on recorded_rates(user_id);
+    `)
+  },
+
+  /**
+   * 7 — Display Currency (CONTEXT.md § Display Currency): three nullable columns, the same
+   * flattening Position uses for the currency it pays in. All three null together means
+   * derived rather than unset — the earliest Position's currency — so every existing User
+   * keeps behaving exactly as before this column arrived, with nothing to migrate and
+   * nobody to ask.
+   */
+  (db) => {
+    db.exec(`
+      alter table users add column display_currency_code text;
+      alter table users add column display_currency_symbol text;
+      alter table users add column display_currency_decimals integer;
+    `)
+  },
 ]
 
 function migrate(db: Database): void {
@@ -240,6 +281,14 @@ function rowToUser(row: UserRow): User {
     aiBaseUrl: row.ai_base_url,
     aiApiKey: row.ai_api_key,
     aiModel: row.ai_model,
+    displayCurrency:
+      row.display_currency_code === null || row.display_currency_symbol === null || row.display_currency_decimals === null
+        ? null
+        : {
+            code: row.display_currency_code,
+            symbol: row.display_currency_symbol,
+            decimals: row.display_currency_decimals,
+          },
     compensationDisplay: row.compensation_display,
   }
 }
@@ -371,6 +420,18 @@ function rowToRound(row: RoundRow): Round {
   }
 }
 
+function rowToRecordedRate(row: RecordedRateRow): RecordedRate {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    fromCode: row.from_code,
+    toCode: row.to_code,
+    date: row.date,
+    rateMinor: row.rate_minor,
+    rateDecimals: row.rate_decimals,
+  }
+}
+
 function rowToSession(row: SessionRow): Session {
   return {
     token: row.token,
@@ -411,6 +472,9 @@ interface UserRow {
   ai_api_key: string | null
   ai_model: string | null
   compensation_display: 'annual' | 'monthly'
+  display_currency_code: string | null
+  display_currency_symbol: string | null
+  display_currency_decimals: number | null
   /** Never read by `rowToUser` — `passwordHashFor` is the only method that selects this. */
   password_hash: string | null
 }
@@ -497,6 +561,15 @@ interface RoundRow {
   person: string | null
   notes: string | null
 }
+interface RecordedRateRow {
+  id: string
+  user_id: string
+  from_code: string
+  to_code: string
+  date: string
+  rate_minor: number
+  rate_decimals: number
+}
 interface DocumentMetaRow {
   id: string
   user_id: string
@@ -566,6 +639,10 @@ export class SqliteStore implements HyperionStore {
               .all(...applicationIds) as RoundRow[]
           ).map(rowToRound)
 
+    const recordedRates = (
+      this.db.prepare('select * from recorded_rates where user_id = ?').all(userId) as RecordedRateRow[]
+    ).map(rowToRecordedRate)
+
     // Every column except `bytes` — the metadata a record listing needs, at none of the
     // cost of the files behind it.
     const documents = (
@@ -585,6 +662,7 @@ export class SqliteStore implements HyperionStore {
       applications,
       applicationEvents,
       rounds,
+      recordedRates,
       documents,
     }
   }
@@ -602,8 +680,9 @@ export class SqliteStore implements HyperionStore {
     if (existing) throw new StorageError(`a User with id "${user.id}" already exists`)
     this.db
       .prepare(
-        `insert into users (id, display_name, is_admin, fold_threshold_days, stall_threshold_days, ai_base_url, ai_api_key, ai_model, compensation_display)
-         values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `insert into users (id, display_name, is_admin, fold_threshold_days, stall_threshold_days, ai_base_url, ai_api_key, ai_model, compensation_display,
+           display_currency_code, display_currency_symbol, display_currency_decimals)
+         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         user.id,
@@ -615,6 +694,9 @@ export class SqliteStore implements HyperionStore {
         user.aiApiKey,
         user.aiModel,
         user.compensationDisplay,
+        user.displayCurrency?.code ?? null,
+        user.displayCurrency?.symbol ?? null,
+        user.displayCurrency?.decimals ?? null,
       )
   }
 
@@ -622,7 +704,8 @@ export class SqliteStore implements HyperionStore {
     const result = this.db
       .prepare(
         `update users set display_name = ?, is_admin = ?, fold_threshold_days = ?, stall_threshold_days = ?,
-           ai_base_url = ?, ai_api_key = ?, ai_model = ?, compensation_display = ?
+           ai_base_url = ?, ai_api_key = ?, ai_model = ?, compensation_display = ?,
+           display_currency_code = ?, display_currency_symbol = ?, display_currency_decimals = ?
          where id = ?`,
       )
       .run(
@@ -634,6 +717,9 @@ export class SqliteStore implements HyperionStore {
         user.aiApiKey,
         user.aiModel,
         user.compensationDisplay,
+        user.displayCurrency?.code ?? null,
+        user.displayCurrency?.symbol ?? null,
+        user.displayCurrency?.decimals ?? null,
         user.id,
       )
     if (result.changes === 0) throw new StorageError(`no User "${user.id}" is stored`)
@@ -942,6 +1028,30 @@ export class SqliteStore implements HyperionStore {
            (select id from applications where user_id = ?)`,
       )
       .run(id, userId)
+  }
+
+  async writeRecordedRate(rate: RecordedRate): Promise<void> {
+    this.db
+      .prepare(
+        `insert into recorded_rates (id, user_id, from_code, to_code, date, rate_minor, rate_decimals)
+         values (@id, @userId, @fromCode, @toCode, @date, @rateMinor, @rateDecimals)
+         on conflict(id) do update set
+           from_code = excluded.from_code, to_code = excluded.to_code, date = excluded.date,
+           rate_minor = excluded.rate_minor, rate_decimals = excluded.rate_decimals`,
+      )
+      .run({
+        id: rate.id,
+        userId: rate.userId,
+        fromCode: rate.fromCode,
+        toCode: rate.toCode,
+        date: rate.date,
+        rateMinor: rate.rateMinor,
+        rateDecimals: rate.rateDecimals,
+      })
+  }
+
+  async deleteRecordedRate(userId: UserId, id: RecordedRateId): Promise<void> {
+    this.db.prepare('delete from recorded_rates where id = ? and user_id = ?').run(id, userId)
   }
 
   async writeDocument(meta: DocumentMeta, bytes: Uint8Array): Promise<void> {

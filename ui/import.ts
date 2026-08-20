@@ -8,6 +8,7 @@ import {
   saveApplicationEvent,
   savePayment,
   savePosition,
+  saveRecordedRate,
   saveRound,
   saveStandingTerms,
   saveUser,
@@ -22,6 +23,7 @@ export interface ImportSummary {
   applications: number
   applicationEvents: number
   rounds: number
+  recordedRates: number
   documents: number
 }
 
@@ -66,6 +68,9 @@ export async function applyImport(bytes: Uint8Array): Promise<ImportSummary> {
     aiApiKey: data.user.aiApiKey,
     aiModel: data.user.aiModel,
     compensationDisplay: data.user.compensationDisplay,
+    // An export written before Display Currency existed has no such field; `?? null` keeps
+    // it derived rather than restoring `undefined` into a column that must hold a value.
+    displayCurrency: data.user.displayCurrency ?? null,
   })
 
   for (const position of data.positions) await savePosition({ ...position, userId })
@@ -79,6 +84,9 @@ export async function applyImport(bytes: Uint8Array): Promise<ImportSummary> {
   for (const application of data.applications) await saveApplication({ ...application, userId })
   for (const event of data.applicationEvents) await saveApplicationEvent(event)
   for (const round of data.rounds) await saveRound(round)
+  // Exports written before Recorded Rates existed simply have no such key — an older
+  // archive restores as the record it was, rather than failing on a field it predates.
+  for (const rate of data.recordedRates ?? []) await saveRecordedRate({ ...rate, userId })
 
   return {
     positions: data.positions.length,
@@ -88,6 +96,7 @@ export async function applyImport(bytes: Uint8Array): Promise<ImportSummary> {
     applications: data.applications.length,
     applicationEvents: data.applicationEvents.length,
     rounds: data.rounds.length,
+    recordedRates: (data.recordedRates ?? []).length,
     documents: data.documents.length,
   }
 }

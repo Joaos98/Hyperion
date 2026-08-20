@@ -21,6 +21,7 @@ const USER: User = {
   aiApiKey: null,
   aiModel: null,
   compensationDisplay: 'annual',
+  displayCurrency: null,
 }
 const PASSWORD = 'correct horse battery staple'
 const SETUP_TOKEN = 'the-real-setup-token'
@@ -245,6 +246,34 @@ describe('writes cannot claim another User\'s id', () => {
         method: 'PUT',
         body: JSON.stringify({
           achievement: { id: 'ach-1', userId: 'someone-else', positionId: 'pos-1', date: '2026-02-12', text: 'Shipped it.', impact: null },
+        }),
+      }),
+    )
+    expect(response.status).toBe(403)
+  })
+
+  it('writes a Recorded Rate and reads it back on the record', async () => {
+    const { base, cookie } = await seededServer()
+    const rate = { id: 'rate-1', userId: 'local', fromCode: 'USD', toCode: 'BRL', date: '2026-03-01', rateMinor: 54231, rateDecimals: 4 }
+    const written = await fetch(
+      `${base}/api/recorded-rates/rate-1`,
+      authed(cookie, { method: 'PUT', body: JSON.stringify({ rate }) }),
+    )
+    expect(written.status).toBe(204)
+
+    const loaded = await fetch(`${base}/api/record`, authed(cookie, {}))
+    const { record } = (await loaded.json()) as { record: { recordedRates: unknown[] } }
+    expect(record.recordedRates).toEqual([rate])
+  })
+
+  it('403s a Recorded Rate write whose userId does not match the signed-in User', async () => {
+    const { base, cookie } = await seededServer()
+    const response = await fetch(
+      `${base}/api/recorded-rates/rate-1`,
+      authed(cookie, {
+        method: 'PUT',
+        body: JSON.stringify({
+          rate: { id: 'rate-1', userId: 'someone-else', fromCode: 'USD', toCode: 'BRL', date: '2026-03-01', rateMinor: 54231, rateDecimals: 4 },
         }),
       }),
     )

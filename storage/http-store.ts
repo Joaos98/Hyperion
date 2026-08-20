@@ -12,6 +12,8 @@ import {
   type PaymentId,
   type Position,
   type PositionId,
+  type RecordedRate,
+  type RecordedRateId,
   type Round,
   type RoundId,
   type StandingTerms,
@@ -122,6 +124,14 @@ export function httpStore(base: string, send: typeof fetch = fetch): HyperionSto
 
     async deleteRound(_userId: UserId, id: RoundId): Promise<void> {
       await call('DELETE', `/rounds/${encodeURIComponent(id)}`)
+    },
+
+    async writeRecordedRate(rate: RecordedRate): Promise<void> {
+      await call('PUT', `/recorded-rates/${encodeURIComponent(rate.id)}`, { rate })
+    },
+
+    async deleteRecordedRate(_userId: UserId, id: RecordedRateId): Promise<void> {
+      await call('DELETE', `/recorded-rates/${encodeURIComponent(id)}`)
     },
 
     async writeDocument(meta: DocumentMeta, bytes: Uint8Array): Promise<void> {

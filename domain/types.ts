@@ -28,6 +28,9 @@ export type RoundId = string
 /** A Document's identity. */
 export type DocumentId = string
 
+/** A Recorded Rate's identity. */
+export type RecordedRateId = string
+
 /**
  * A person with a login and the private set of records behind it (CONTEXT.md § User).
  * Every domain row below belongs to exactly one User; nothing in `domain/` enforces that
@@ -50,6 +53,22 @@ export interface User {
    * just redisplay it.
    */
   compensationDisplay: 'annual' | 'monthly'
+  /**
+   * The currency this User's figures are *placed and compared* in — never the currency
+   * anything is stored or labelled in (CONTEXT.md § Display Currency). An amount always
+   * renders in the currency it was actually paid in; this decides only which units a
+   * comparison across two currencies resolves to, and which scale a chart spanning two
+   * of them is drawn against.
+   *
+   * `null` means derived rather than unset: the currency of the earliest Position on
+   * record, which for a career that never crossed a border is simply the currency. So a
+   * single-currency User is never asked, and a User whose record began in one country
+   * keeps reading in the units they most likely still think and spend in. Setting it is
+   * an override, offered in Settings and required nowhere — the alternative, asking at
+   * sign-up, would put the question at the one moment there is no record to answer it
+   * against (plan § 8: "no table to fill in upfront").
+   */
+  displayCurrency: Currency | null
   /**
    * This User's own AI setup (plan § AI is additive, never load-bearing) — a base URL, a
    * key and a model, all `null` until they configure one. Every AI feature stays visible
@@ -263,4 +282,31 @@ export interface DocumentMeta {
   mimeType: string
   sizeBytes: number
   createdAt: IsoDate
+}
+
+/**
+ * An exchange rate a User entered, for one currency pair on one date (CONTEXT.md
+ * § Recorded Rate). Reads "1 `fromCode` = rate `toCode`", and answers the pair in both
+ * directions — the reciprocal is the same fact, so it is derived rather than asked for
+ * twice.
+ *
+ * The pair is held as codes rather than as two `Currency` objects: a rate needs to know
+ * which currencies it relates and nothing else, and a stored symbol here could only ever
+ * go stale against the Position that owns the real one. `rateMinor` and `rateDecimals`
+ * are the rate as an exact integer at its own precision, for the reason
+ * `Currency.decimals` exists — quoted rates carry more places than the amounts they
+ * convert, and no figure in Hyperion comes from a float.
+ *
+ * Hyperion fetches none of these, ever. One exists because a person typed it when a
+ * comparison could not be answered without it.
+ */
+export interface RecordedRate {
+  id: RecordedRateId
+  userId: UserId
+  fromCode: string
+  toCode: string
+  /** The date the rate is claimed to hold for — not when it was typed. */
+  date: IsoDate
+  rateMinor: Minor
+  rateDecimals: number
 }

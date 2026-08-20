@@ -13,6 +13,8 @@ import {
   type PaymentId,
   type Position,
   type PositionId,
+  type RecordedRate,
+  type RecordedRateId,
   type Round,
   type RoundId,
   type StandingTerms,
@@ -66,6 +68,7 @@ function defaulted(record: Partial<UserRecord> & Pick<UserRecord, 'user'>): User
     applications: record.applications ?? [],
     applicationEvents: record.applicationEvents ?? [],
     rounds: record.rounds ?? [],
+    recordedRates: record.recordedRates ?? [],
     documents: record.documents ?? [],
   }
 }
@@ -123,6 +126,7 @@ export class LocalStorageStore implements HyperionStore {
       applications: [],
       applicationEvents: [],
       rounds: [],
+      recordedRates: [],
       documents: [],
     }
     this.write(records)
@@ -240,6 +244,20 @@ export class LocalStorageStore implements HyperionStore {
     const records = this.read()
     const record = requireRecord(records, userId)
     record.rounds = record.rounds.filter((row) => row.id !== id)
+    this.write(records)
+  }
+
+  async writeRecordedRate(rate: RecordedRate): Promise<void> {
+    const records = this.read()
+    const record = requireRecord(records, rate.userId)
+    record.recordedRates = upsert(record.recordedRates, rate)
+    this.write(records)
+  }
+
+  async deleteRecordedRate(userId: UserId, id: RecordedRateId): Promise<void> {
+    const records = this.read()
+    const record = requireRecord(records, userId)
+    record.recordedRates = record.recordedRates.filter((row) => row.id !== id)
     this.write(records)
   }
 

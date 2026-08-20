@@ -5,6 +5,7 @@ import type {
   DocumentMeta,
   Payment,
   Position,
+  RecordedRate,
   Round,
   StandingTerms,
   User,
@@ -23,6 +24,7 @@ export interface ExportedRecord {
   applications: Application[]
   applicationEvents: ApplicationEvent[]
   rounds: Round[]
+  recordedRates: RecordedRate[]
   documents: DocumentMeta[]
 }
 
@@ -47,6 +49,7 @@ export async function buildExport(): Promise<Uint8Array> {
     applications: [...record.applications],
     applicationEvents: [...record.applicationEvents],
     rounds: [...record.rounds],
+    recordedRates: [...record.recordedRates],
     documents: [...record.documents],
   }
 

@@ -50,6 +50,7 @@ describe('LocalStorageStore — beyond the shared contract', () => {
       aiApiKey: null,
       aiModel: null,
       compensationDisplay: 'annual',
+      displayCurrency: null,
     })
     const reopened = new LocalStorageStore(storage)
     expect((await reopened.loadUserRecord('user-1'))?.user.displayName).toBe('João')

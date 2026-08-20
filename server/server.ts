@@ -10,6 +10,7 @@ import {
   type DocumentMeta,
   type Invite,
   type Position,
+  type RecordedRate,
   type User,
   type UserId,
 } from '../domain/index.js'
@@ -141,6 +142,7 @@ async function route(
       aiApiKey: null,
       aiModel: null,
       compensationDisplay: 'monthly',
+      displayCurrency: null,
     }
     await auth.createUser(user)
     await auth.setPasswordHash(user.id, await hashPassword(sent.password))
@@ -175,6 +177,7 @@ async function route(
       aiApiKey: null,
       aiModel: null,
       compensationDisplay: 'annual',
+      displayCurrency: null,
     }
     await auth.createUser(user)
     await auth.setPasswordHash(user.id, await hashPassword(sent.password))
@@ -342,6 +345,19 @@ async function route(
     }
     if (method === 'DELETE') {
       await store.deleteRound(userId, at[1])
+      return send(response, 204)
+    }
+  }
+
+  if (at[0] === 'recorded-rates' && at[1] && at.length === 2) {
+    if (method === 'PUT') {
+      const rate = await asked<RecordedRate>(request, 'rate')
+      if (rate.userId !== userId) return send(response, 403, { error: "Cannot write another User's Recorded Rate" })
+      await store.writeRecordedRate(rate)
+      return send(response, 204)
+    }
+    if (method === 'DELETE') {
+      await store.deleteRecordedRate(userId, at[1])
       return send(response, 204)
     }
   }

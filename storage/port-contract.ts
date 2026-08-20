@@ -6,6 +6,7 @@ import type {
   DocumentMeta,
   Payment,
   Position,
+  RecordedRate,
   Round,
   StandingTerms,
   User,
@@ -25,6 +26,7 @@ function sampleUser(id = 'user-1'): User {
     aiApiKey: null,
     aiModel: null,
     compensationDisplay: 'annual',
+    displayCurrency: null,
   }
 }
 
@@ -69,6 +71,10 @@ function sampleEvent(applicationId: string, id = 'evt-1'): ApplicationEvent {
 
 function sampleRound(applicationId: string, id = 'round-1'): Round {
   return { id, applicationId, date: '2026-08-05', kind: 'interview', person: 'Sarah, Eng Manager', notes: null }
+}
+
+function sampleRecordedRate(userId: string, id = 'rate-1'): RecordedRate {
+  return { id, userId, fromCode: 'USD', toCode: 'BRL', date: '2026-03-01', rateMinor: 54231, rateDecimals: 4 }
 }
 
 function sampleDocumentMeta(userId: string, id = 'doc-1'): DocumentMeta {
@@ -333,6 +339,44 @@ export function runStoreContract(name: string, createStore: () => HyperionStore 
       const record = await store.loadUserRecord('user-1')
       expect(record?.applications).toEqual([])
       expect(record?.rounds).toEqual([])
+    })
+
+    it('writes a Recorded Rate against its User, needing no Position or Application', async () => {
+      const store = await createStore()
+      await store.createUser(sampleUser())
+      await store.writeRecordedRate(sampleRecordedRate('user-1'))
+      const record = await store.loadUserRecord('user-1')
+      expect(record?.recordedRates).toHaveLength(1)
+      expect(record?.recordedRates[0]).toEqual(sampleRecordedRate('user-1'))
+    })
+
+    it('overwrites a Recorded Rate rather than keeping two for the same id', async () => {
+      const store = await createStore()
+      await store.createUser(sampleUser())
+      await store.writeRecordedRate(sampleRecordedRate('user-1'))
+      await store.writeRecordedRate({ ...sampleRecordedRate('user-1'), rateMinor: 55000 })
+      const record = await store.loadUserRecord('user-1')
+      expect(record?.recordedRates).toHaveLength(1)
+      expect(record?.recordedRates[0]?.rateMinor).toBe(55000)
+    })
+
+    it('deletes a Recorded Rate', async () => {
+      const store = await createStore()
+      await store.createUser(sampleUser())
+      await store.writeRecordedRate(sampleRecordedRate('user-1', 'rate-1'))
+      await store.writeRecordedRate(sampleRecordedRate('user-1', 'rate-2'))
+      await store.deleteRecordedRate('user-1', 'rate-1')
+      const record = await store.loadUserRecord('user-1')
+      expect(record?.recordedRates.map((row) => row.id)).toEqual(['rate-2'])
+    })
+
+    it("keeps one User's Recorded Rates out of another's", async () => {
+      const store = await createStore()
+      await store.createUser(sampleUser())
+      await store.createUser({ ...sampleUser(), id: 'user-2' })
+      await store.writeRecordedRate(sampleRecordedRate('user-2'))
+      expect((await store.loadUserRecord('user-1'))?.recordedRates).toEqual([])
+      expect((await store.loadUserRecord('user-2'))?.recordedRates).toHaveLength(1)
     })
 
     it('deletes a single Round without touching its siblings or the Application', async () => {

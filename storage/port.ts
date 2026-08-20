@@ -11,6 +11,8 @@ import type {
   PaymentId,
   Position,
   PositionId,
+  RecordedRate,
+  RecordedRateId,
   Round,
   RoundId,
   StandingTerms,
@@ -48,6 +50,7 @@ export interface UserRecord {
   applications: Application[]
   applicationEvents: ApplicationEvent[]
   rounds: Round[]
+  recordedRates: RecordedRate[]
   documents: DocumentMeta[]
 }
 
@@ -96,6 +99,9 @@ export interface HyperionStore {
 
   writeRound(round: Round): Promise<void>
   deleteRound(userId: UserId, id: RoundId): Promise<void>
+
+  writeRecordedRate(rate: RecordedRate): Promise<void>
+  deleteRecordedRate(userId: UserId, id: RecordedRateId): Promise<void>
 
   /** Writes a Document's metadata and its bytes together — there is no meaning to one without the other. */
   writeDocument(meta: DocumentMeta, bytes: Uint8Array): Promise<void>
