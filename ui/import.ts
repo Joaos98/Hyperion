@@ -62,7 +62,9 @@ export async function applyImport(bytes: Uint8Array): Promise<ImportSummary> {
     displayName: data.user.displayName,
     foldThresholdDays: data.user.foldThresholdDays,
     stallThresholdDays: data.user.stallThresholdDays,
+    aiBaseUrl: data.user.aiBaseUrl,
     aiApiKey: data.user.aiApiKey,
+    aiModel: data.user.aiModel,
     compensationDisplay: data.user.compensationDisplay,
   })
 

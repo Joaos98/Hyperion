@@ -19,7 +19,9 @@ export async function seedDemo(store: HyperionStore, userId: UserId): Promise<vo
     isAdmin: true,
     foldThresholdDays: 90,
     stallThresholdDays: 21,
+    aiBaseUrl: null,
     aiApiKey: null,
+    aiModel: null,
     compensationDisplay: 'annual',
   })
 

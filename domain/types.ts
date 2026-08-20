@@ -51,11 +51,19 @@ export interface User {
    */
   compensationDisplay: 'annual' | 'monthly'
   /**
-   * This User's own key for the AI layer (plan § AI is additive, never load-bearing).
-   * `null` until they paste one in; every AI feature stays visible but inactive without
-   * it, and nothing is ever sent anywhere on this User's behalf until it is set.
+   * This User's own AI setup (plan § AI is additive, never load-bearing) — a base URL, a
+   * key and a model, all `null` until they configure one. Every AI feature stays visible
+   * but inactive until all three are set, and nothing is ever sent anywhere on this User's
+   * behalf until then.
+   *
+   * `aiBaseUrl` is the OpenAI-compatible chat-completions endpoint to send to — Anthropic,
+   * Google Gemini and most other providers now speak this same wire shape, so one request
+   * shape reaches any of them; only the base URL, key and model actually vary (CONTEXT.md §
+   * AI Setup). Not a closed list of named providers: a custom base URL works the same way.
    */
+  aiBaseUrl: string | null
   aiApiKey: string | null
+  aiModel: string | null
 }
 
 /**

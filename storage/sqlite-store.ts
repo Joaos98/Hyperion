@@ -206,6 +206,19 @@ const migrations: ((db: Database) => void)[] = [
       create index rounds_application on rounds(application_id);
     `)
   },
+
+  /**
+   * 5 — AI Setup (CONTEXT.md § AI Setup) grew from one column to three: a base URL and a
+   * model joined `ai_api_key`, since a key alone no longer says which endpoint or model to
+   * send it to. Existing Users land back in the gated "needs setup" state until they
+   * reconfigure — the old key alone isn't enough to guess the other two from.
+   */
+  (db) => {
+    db.exec(`
+      alter table users add column ai_base_url text;
+      alter table users add column ai_model text;
+    `)
+  },
 ]
 
 function migrate(db: Database): void {
@@ -224,7 +237,9 @@ function rowToUser(row: UserRow): User {
     isAdmin: row.is_admin === 1,
     foldThresholdDays: row.fold_threshold_days,
     stallThresholdDays: row.stall_threshold_days,
+    aiBaseUrl: row.ai_base_url,
     aiApiKey: row.ai_api_key,
+    aiModel: row.ai_model,
     compensationDisplay: row.compensation_display,
   }
 }
@@ -392,7 +407,9 @@ interface UserRow {
   is_admin: 0 | 1
   fold_threshold_days: number
   stall_threshold_days: number
+  ai_base_url: string | null
   ai_api_key: string | null
+  ai_model: string | null
   compensation_display: 'annual' | 'monthly'
   /** Never read by `rowToUser` — `passwordHashFor` is the only method that selects this. */
   password_hash: string | null
@@ -585,8 +602,8 @@ export class SqliteStore implements HyperionStore {
     if (existing) throw new StorageError(`a User with id "${user.id}" already exists`)
     this.db
       .prepare(
-        `insert into users (id, display_name, is_admin, fold_threshold_days, stall_threshold_days, ai_api_key, compensation_display)
-         values (?, ?, ?, ?, ?, ?, ?)`,
+        `insert into users (id, display_name, is_admin, fold_threshold_days, stall_threshold_days, ai_base_url, ai_api_key, ai_model, compensation_display)
+         values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         user.id,
@@ -594,7 +611,9 @@ export class SqliteStore implements HyperionStore {
         user.isAdmin ? 1 : 0,
         user.foldThresholdDays,
         user.stallThresholdDays,
+        user.aiBaseUrl,
         user.aiApiKey,
+        user.aiModel,
         user.compensationDisplay,
       )
   }
@@ -603,7 +622,7 @@ export class SqliteStore implements HyperionStore {
     const result = this.db
       .prepare(
         `update users set display_name = ?, is_admin = ?, fold_threshold_days = ?, stall_threshold_days = ?,
-           ai_api_key = ?, compensation_display = ?
+           ai_base_url = ?, ai_api_key = ?, ai_model = ?, compensation_display = ?
          where id = ?`,
       )
       .run(
@@ -611,7 +630,9 @@ export class SqliteStore implements HyperionStore {
         user.isAdmin ? 1 : 0,
         user.foldThresholdDays,
         user.stallThresholdDays,
+        user.aiBaseUrl,
         user.aiApiKey,
+        user.aiModel,
         user.compensationDisplay,
         user.id,
       )

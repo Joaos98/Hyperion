@@ -5,6 +5,7 @@ import CompensationView from './views/CompensationView.vue'
 import PositionsView from './views/PositionsView.vue'
 import PositionView from './views/PositionView.vue'
 import SelfAssessmentView from './views/SelfAssessmentView.vue'
+import ResumeBulletsView from './views/ResumeBulletsView.vue'
 import ApplicationsView from './views/ApplicationsView.vue'
 import ApplicationView from './views/ApplicationView.vue'
 import DocumentsView from './views/DocumentsView.vue'
@@ -38,6 +39,7 @@ export const router = createRouter({
     { path: '/compensation', name: 'compensation', component: CompensationView },
     { path: '/positions/:id', name: 'position', component: PositionView, props: true },
     { path: '/self-assessment', name: 'self-assessment', component: SelfAssessmentView },
+    { path: '/resume-bullets', name: 'resume-bullets', component: ResumeBulletsView },
     { path: '/applications', name: 'applications', component: ApplicationsView },
     { path: '/applications/:id', name: 'application', component: ApplicationView, props: true },
     { path: '/documents', name: 'documents', component: DocumentsView },

@@ -342,6 +342,18 @@ _Avoid_: file, attachment, résumé (unqualified), asset
 
 ### Capture and suggestions
 
+**AI Setup**:
+A base URL, a model and a key, all `null` until a User configures one — never a closed list of
+named providers. Anthropic, Google Gemini and most other providers now speak the same
+OpenAI-compatible chat-completions wire shape, so Hyperion sends the same request regardless of
+which one a base URL points at; a preset just fills in a known URL, and a custom one works
+identically. Every AI feature — the self-assessment draft, résumé bullets, whatever joins them —
+stays visible but inactive until all three are set, and nothing is sent anywhere on a User's behalf
+until then (plan § AI is additive, never load-bearing). OpenAI itself cannot be a base URL here: its
+API sends no CORS headers at all, so no browser can reach it directly, regardless of request shape —
+a constraint on OpenAI's own servers, not something Hyperion's request format decides.
+_Avoid_: provider (as a closed enum), integration, connection
+
 **Capture**:
 A job posting pulled in from the browser as a URL, a page title and raw visible text, with no fields
 parsed out of it. It becomes an Application when somebody fills the fields in, or when the AI layer

@@ -14,7 +14,9 @@ describe('SqliteStore — beyond the shared contract', () => {
       isAdmin: true,
       foldThresholdDays: 90,
       stallThresholdDays: 21,
+      aiBaseUrl: null,
       aiApiKey: null,
+      aiModel: null,
       compensationDisplay: 'annual',
     })
     const reopened = new SqliteStore(db)
@@ -25,7 +27,7 @@ describe('SqliteStore — beyond the shared contract', () => {
     const db = new DatabaseConstructor(':memory:')
     new SqliteStore(db)
     expect(() => new SqliteStore(db)).not.toThrow()
-    expect(db.pragma('user_version', { simple: true })).toBe(4)
+    expect(db.pragma('user_version', { simple: true })).toBe(5)
   })
 
   it('refuses a Standing Terms row whose Position does not exist', async () => {
@@ -36,7 +38,9 @@ describe('SqliteStore — beyond the shared contract', () => {
       isAdmin: true,
       foldThresholdDays: 90,
       stallThresholdDays: 21,
+      aiBaseUrl: null,
       aiApiKey: null,
+      aiModel: null,
       compensationDisplay: 'annual',
     })
     await expect(
@@ -65,7 +69,9 @@ describe('SqliteStore — auth', () => {
       isAdmin: true,
       foldThresholdDays: 90,
       stallThresholdDays: 21,
+      aiBaseUrl: null,
       aiApiKey: null,
+      aiModel: null,
       compensationDisplay: 'annual',
     })
   }

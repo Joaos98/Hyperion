@@ -1,41 +1,51 @@
 import { describe, expect, it, vi } from 'vitest'
-import { AiError, generateSelfAssessment } from './ai.js'
+import { AiError, askAi } from './ai.js'
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 }
 
-describe('generateSelfAssessment', () => {
-  it('sends the prompt with the User’s key and the direct-browser-access header', async () => {
-    const send = vi.fn().mockResolvedValue(jsonResponse(200, { content: [{ type: 'text', text: 'Draft.' }] }))
-    await generateSelfAssessment('sk-ant-test', 'the prompt', send)
+describe('askAi', () => {
+  it('posts an OpenAI-compatible chat-completions body to <baseUrl>/chat/completions', async () => {
+    const send = vi.fn().mockResolvedValue(jsonResponse(200, { choices: [{ message: { content: 'Draft.' } }] }))
+    await askAi('https://api.anthropic.com/v1', 'sk-ant-test', 'claude-sonnet-5', 'the prompt', send)
     const [url, init] = send.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe('https://api.anthropic.com/v1/messages')
+    expect(url).toBe('https://api.anthropic.com/v1/chat/completions')
     expect(init.headers).toMatchObject({
-      'x-api-key': 'sk-ant-test',
+      authorization: 'Bearer sk-ant-test',
       'anthropic-dangerous-direct-browser-access': 'true',
     })
-    expect(JSON.parse(init.body as string).messages).toEqual([{ role: 'user', content: 'the prompt' }])
+    expect(JSON.parse(init.body as string)).toEqual({
+      model: 'claude-sonnet-5',
+      messages: [{ role: 'user', content: 'the prompt' }],
+    })
   })
 
-  it('returns the text block from the response', async () => {
-    const send = vi.fn().mockResolvedValue(jsonResponse(200, { content: [{ type: 'text', text: 'Here is the draft.' }] }))
-    const text = await generateSelfAssessment('sk-ant-test', 'prompt', send)
+  it('strips a trailing slash from the base URL before appending the path', async () => {
+    const send = vi.fn().mockResolvedValue(jsonResponse(200, { choices: [{ message: { content: 'Draft.' } }] }))
+    await askAi('https://api.example.com/v1/', 'key', 'model', 'prompt', send)
+    const [url] = send.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('https://api.example.com/v1/chat/completions')
+  })
+
+  it('returns the message content from the response', async () => {
+    const send = vi.fn().mockResolvedValue(jsonResponse(200, { choices: [{ message: { content: 'Here is the draft.' } }] }))
+    const text = await askAi('https://api.example.com/v1', 'key', 'model', 'prompt', send)
     expect(text).toBe('Here is the draft.')
   })
 
-  it('turns a non-2xx response into an AiError carrying Anthropic’s own message', async () => {
-    const send = vi.fn().mockResolvedValue(jsonResponse(401, { error: { message: 'invalid x-api-key' } }))
-    await expect(generateSelfAssessment('bad-key', 'prompt', send)).rejects.toThrow('invalid x-api-key')
+  it('turns a non-2xx response into an AiError carrying the provider’s own message', async () => {
+    const send = vi.fn().mockResolvedValue(jsonResponse(401, { error: { message: 'invalid api key' } }))
+    await expect(askAi('https://api.example.com/v1', 'bad-key', 'model', 'prompt', send)).rejects.toThrow('invalid api key')
   })
 
   it('turns a network failure into an AiError rather than throwing raw', async () => {
     const send = vi.fn().mockRejectedValue(new TypeError('fetch failed'))
-    await expect(generateSelfAssessment('sk-ant-test', 'prompt', send)).rejects.toThrow(AiError)
+    await expect(askAi('https://api.example.com/v1', 'key', 'model', 'prompt', send)).rejects.toThrow(AiError)
   })
 
-  it('refuses a response with no text block', async () => {
-    const send = vi.fn().mockResolvedValue(jsonResponse(200, { content: [] }))
-    await expect(generateSelfAssessment('sk-ant-test', 'prompt', send)).rejects.toThrow(AiError)
+  it('refuses a response with no message content', async () => {
+    const send = vi.fn().mockResolvedValue(jsonResponse(200, { choices: [] }))
+    await expect(askAi('https://api.example.com/v1', 'key', 'model', 'prompt', send)).rejects.toThrow(AiError)
   })
 })

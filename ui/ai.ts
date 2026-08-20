@@ -6,59 +6,79 @@ export class AiError extends Error {
   }
 }
 
-const ENDPOINT = 'https://api.anthropic.com/v1/messages'
-const MODEL = 'claude-sonnet-5'
+/**
+ * A named base URL to fill in when the User picks it — not a closed list `askAi` itself
+ * knows about, just a convenience so most people never have to go find their provider's
+ * endpoint by hand. `custom` leaves the base URL for the User to type themselves, the same
+ * mechanism that reaches anything else speaking this wire shape (a local model server, a
+ * provider not listed here).
+ */
+export interface AiPreset {
+  id: string
+  label: string
+  baseUrl: string
+}
 
-interface MessagesResponse {
-  content?: { type: string; text?: string }[]
+export const AI_PRESETS: readonly AiPreset[] = [
+  { id: 'anthropic', label: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1' },
+  { id: 'google', label: 'Google Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai' },
+  { id: 'custom', label: 'Custom', baseUrl: '' },
+]
+
+interface ChatCompletionsResponse {
+  choices?: { message?: { content?: string } }[]
   error?: { message?: string }
 }
 
 /**
- * Sends a self-assessment prompt straight from the browser to Anthropic, using the
- * User's own key. Direct rather than proxied through the server: the key already lives
- * only in this User's own record (`ui/store.ts`'s `saveUser`), so routing the call
- * through the server would mean sending it over the wire a second time for no benefit —
- * and it keeps the demo build (no server at all) and the self-hosted build behaving
- * identically, the same reason the domain engine itself runs in the browser in both.
+ * Sends a prompt straight from the browser to any OpenAI-compatible chat-completions
+ * endpoint, using the User's own key — every AI feature's shared sender, whichever domain
+ * module built the prompt (a self-assessment draft, résumé bullets, or whatever joins them
+ * later). Anthropic, Google Gemini and most other providers now speak this same request
+ * shape (CONTEXT.md § AI Setup), so one function reaches any of them; only `baseUrl`,
+ * `apiKey` and `model` actually vary.
  *
- * `anthropic-dangerous-direct-browser-access` is Anthropic's own supported header for
- * exactly this shape of app: a personal tool, on hardware the User controls, calling out
- * with a key only they hold. The name is a warning about the general case — a public web
- * app exposing a shared key to every visitor — which does not describe Hyperion.
+ * Direct rather than proxied through a server: the key already lives only in this User's
+ * own record (`ui/store.ts`'s `saveUser`), so routing the call through Hyperion's own
+ * server would mean sending it over the wire a second time for no benefit — and it keeps
+ * the demo build (no server at all) and the self-hosted build behaving identically, the
+ * same reason the domain engine itself runs in the browser in both.
+ *
+ * Note this rules out OpenAI itself as a base URL: its API sends no CORS headers at all,
+ * so no browser can call it directly regardless of request shape — not something this
+ * function can work around, since the constraint is on OpenAI's own servers, not the
+ * request. `anthropic-dangerous-direct-browser-access` is sent unconditionally because
+ * Anthropic's API requires it for a browser-origin request to pass CORS at all, even
+ * against its OpenAI-compatible endpoint; other providers simply ignore a header they
+ * don't recognise.
  */
-export async function generateSelfAssessment(
-  apiKey: string,
-  prompt: string,
-  send: typeof fetch = fetch,
-): Promise<string> {
+export async function askAi(baseUrl: string, apiKey: string, model: string, prompt: string, send: typeof fetch = fetch): Promise<string> {
+  const url = `${baseUrl.replace(/\/+$/, '')}/chat/completions`
   let response: Response
   try {
-    response = await send(ENDPOINT, {
+    response = await send(url, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+        authorization: `Bearer ${apiKey}`,
         'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 2048,
+        model,
         messages: [{ role: 'user', content: prompt }],
       }),
     })
   } catch (cause) {
-    throw new AiError(`Could not reach Anthropic: ${String(cause instanceof Error ? cause.message : cause)}`)
+    throw new AiError(`Could not reach ${baseUrl}: ${String(cause instanceof Error ? cause.message : cause)}`)
   }
 
-  const body = (await readJson(response)) as MessagesResponse | undefined
+  const body = (await readJson(response)) as ChatCompletionsResponse | undefined
   if (!response.ok) {
-    throw new AiError(body?.error?.message ?? `Anthropic answered ${response.status}`)
+    throw new AiError(body?.error?.message ?? `${baseUrl} answered ${response.status}`)
   }
 
-  const text = body?.content?.find((block) => block.type === 'text')?.text
-  if (!text) throw new AiError('Anthropic returned no text to draft from')
+  const text = body?.choices?.[0]?.message?.content
+  if (!text) throw new AiError(`${baseUrl} returned no text to draft from`)
   return text
 }
 

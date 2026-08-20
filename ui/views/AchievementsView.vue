@@ -36,7 +36,10 @@ const grouped = computed(() => {
   <div class="board">
     <CaptureBox />
 
-    <RouterLink to="/self-assessment" class="draft-link">Draft a self-assessment from this log →</RouterLink>
+    <div class="draft-links">
+      <RouterLink to="/self-assessment" class="draft-link">Draft a self-assessment from this log →</RouterLink>
+      <RouterLink to="/resume-bullets" class="draft-link">Draft résumé bullets from this log →</RouterLink>
+    </div>
 
     <input v-model="query" type="text" class="search" placeholder="Search your achievements…" />
 
@@ -78,8 +81,14 @@ const grouped = computed(() => {
   max-width: 68ch;
 }
 
-.draft-link {
+.draft-links {
   align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.draft-link {
   font-size: 12.5px;
   color: var(--faint);
   text-decoration: none;

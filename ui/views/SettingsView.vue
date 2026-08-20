@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import type { Invite, User } from '../../domain/index.js'
 import {
   AuthError,
@@ -11,6 +11,7 @@ import {
   logout,
   resetUserPassword,
 } from '../auth.js'
+import { AI_PRESETS } from '../ai.js'
 import { buildExport } from '../export.js'
 import { applyImport, type ImportSummary } from '../import.js'
 import { record, saveUser, today } from '../record.js'
@@ -31,6 +32,64 @@ async function saveStallThreshold(): Promise<void> {
   } finally {
     savingThreshold.value = false
   }
+}
+
+// ── AI Setup: base URL, model and key together, visible but inactive until all three are
+// set (plan § AI is additive). A key alone no longer says where to send it or which model
+// to ask for. Lives here rather than on each AI view, since a second AI view (résumé
+// bullets) made the duplicated panel worse than one shared home. ──
+const isAiSetUp = computed(() => !!(record.user?.aiBaseUrl && record.user?.aiApiKey && record.user?.aiModel))
+const aiPresetLabel = computed(() => AI_PRESETS.find((preset) => preset.baseUrl === record.user?.aiBaseUrl)?.label ?? 'Custom')
+
+const presetId = ref(AI_PRESETS[0]!.id)
+const baseUrlInput = ref(AI_PRESETS[0]!.baseUrl)
+const modelInput = ref('claude-sonnet-5')
+const aiKeyInput = ref('')
+const editingAiSetup = ref(false)
+const aiSetupSaving = ref(false)
+
+/**
+ * A model id from one provider means nothing to another, so switching resets it rather
+ * than leaving a stale value behind — Anthropic's current default is worth pre-filling;
+ * every other provider's model id is left for the User to supply. Custom's own base URL is
+ * empty by design (there is nothing to prefill), so it must clear the field too rather than
+ * leaving whichever preset's URL was there before.
+ */
+function applyAiPreset(): void {
+  const preset = AI_PRESETS.find((row) => row.id === presetId.value)
+  if (!preset) return
+  baseUrlInput.value = preset.baseUrl
+  modelInput.value = preset.id === 'anthropic' ? 'claude-sonnet-5' : ''
+}
+
+function startEditingAiSetup(): void {
+  presetId.value = AI_PRESETS.find((preset) => preset.baseUrl === record.user?.aiBaseUrl)?.id ?? 'custom'
+  baseUrlInput.value = record.user?.aiBaseUrl ?? AI_PRESETS[0]!.baseUrl
+  modelInput.value = record.user?.aiModel ?? ''
+  aiKeyInput.value = ''
+  editingAiSetup.value = true
+}
+
+async function saveAiSetup(): Promise<void> {
+  if (!record.user || !baseUrlInput.value.trim() || !modelInput.value.trim() || !aiKeyInput.value.trim()) return
+  aiSetupSaving.value = true
+  try {
+    await saveUser({
+      ...record.user,
+      aiBaseUrl: baseUrlInput.value.trim(),
+      aiApiKey: aiKeyInput.value.trim(),
+      aiModel: modelInput.value.trim(),
+    })
+    editingAiSetup.value = false
+    aiKeyInput.value = ''
+  } finally {
+    aiSetupSaving.value = false
+  }
+}
+
+async function removeAiSetup(): Promise<void> {
+  if (!record.user) return
+  await saveUser({ ...record.user, aiBaseUrl: null, aiApiKey: null, aiModel: null })
 }
 
 // ── your data ──────────────────────────────────────────────────────────────
@@ -243,6 +302,64 @@ onMounted(() => {
         <input v-model.number="stallThresholdDays" type="number" min="1" class="num" @change="saveStallThreshold" />
         <span class="unit">days{{ savingThreshold ? '…' : '' }}</span>
       </div>
+    </section>
+
+    <section class="panel">
+      <h3>AI Setup</h3>
+      <p class="note">
+        Powers the self-assessment draft and résumé bullets. Hyperion sends your entries
+        directly from your browser to whichever endpoint you configure, using a key only you
+        hold — never through this deployment's server, never anywhere else. Nothing works
+        until all three fields are set, and nothing sends anything until then.
+      </p>
+
+      <div v-if="!isAiSetUp" class="setup-form">
+        <label>
+          Provider
+          <select v-model="presetId" @change="applyAiPreset">
+            <option v-for="preset in AI_PRESETS" :key="preset.id" :value="preset.id">{{ preset.label }}</option>
+          </select>
+        </label>
+        <label>Base URL <input v-model="baseUrlInput" type="text" placeholder="https://…" /></label>
+        <label>Model <input v-model="modelInput" type="text" placeholder="model id" /></label>
+        <label>API key <input v-model="aiKeyInput" type="password" placeholder="…" autocomplete="off" /></label>
+        <button
+          class="primary"
+          :disabled="!baseUrlInput.trim() || !modelInput.trim() || !aiKeyInput.trim() || aiSetupSaving"
+          @click="saveAiSetup"
+        >
+          Save
+        </button>
+      </div>
+
+      <template v-else>
+        <div class="key-row">
+          <span class="key-status">{{ aiPresetLabel }} · {{ record.user?.aiModel }} <span class="dot">••••••••</span></span>
+          <button v-if="!editingAiSetup" class="linkbtn" @click="startEditingAiSetup">change</button>
+          <button class="linkbtn" @click="removeAiSetup">remove</button>
+        </div>
+        <div v-if="editingAiSetup" class="setup-form">
+          <label>
+            Provider
+            <select v-model="presetId" @change="applyAiPreset">
+              <option v-for="preset in AI_PRESETS" :key="preset.id" :value="preset.id">{{ preset.label }}</option>
+            </select>
+          </label>
+          <label>Base URL <input v-model="baseUrlInput" type="text" placeholder="https://…" /></label>
+          <label>Model <input v-model="modelInput" type="text" placeholder="model id" /></label>
+          <label>API key <input v-model="aiKeyInput" type="password" placeholder="…" autocomplete="off" /></label>
+          <div class="setup-actions">
+            <button
+              class="primary"
+              :disabled="!baseUrlInput.trim() || !modelInput.trim() || !aiKeyInput.trim() || aiSetupSaving"
+              @click="saveAiSetup"
+            >
+              Save
+            </button>
+            <button class="ghost" @click="editingAiSetup = false">Cancel</button>
+          </div>
+        </div>
+      </template>
     </section>
 
     <div v-if="!serverBuild" class="panel dashed">
@@ -597,6 +714,55 @@ button.ghost {
 
 .linkbtn.danger:hover {
   color: var(--fall);
+}
+
+.setup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  max-width: 420px;
+}
+
+.setup-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.setup-form input,
+.setup-form select {
+  background: var(--page);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-control);
+  padding: 8px 11px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--mono);
+}
+
+.setup-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.key-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.key-status {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.key-status .dot {
+  font-family: var(--mono);
+  color: var(--faint);
 }
 
 .user-l {

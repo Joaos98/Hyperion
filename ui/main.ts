@@ -43,7 +43,9 @@ async function start(): Promise<void> {
         isAdmin: true,
         foldThresholdDays: 90,
         stallThresholdDays: 21,
+        aiBaseUrl: null,
         aiApiKey: null,
+        aiModel: null,
         compensationDisplay: 'monthly',
       })
       await initRecord(store, DEMO_USER_ID)

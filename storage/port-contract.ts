@@ -21,7 +21,9 @@ function sampleUser(id = 'user-1'): User {
     isAdmin: true,
     foldThresholdDays: 90,
     stallThresholdDays: 21,
+    aiBaseUrl: null,
     aiApiKey: null,
+    aiModel: null,
     compensationDisplay: 'annual',
   }
 }
@@ -125,12 +127,23 @@ export function runStoreContract(name: string, createStore: () => HyperionStore 
       expect(record?.user.foldThresholdDays).toBe(60)
     })
 
-    it('holds no AI key until one is set, and stores it once one is', async () => {
+    it('holds no AI Setup until one is set, and stores all three fields once it is', async () => {
       const store = await createStore()
       await store.createUser(sampleUser())
-      expect((await store.loadUserRecord('user-1'))?.user.aiApiKey).toBeNull()
-      await store.writeUser({ ...sampleUser(), aiApiKey: 'sk-ant-test-key' })
-      expect((await store.loadUserRecord('user-1'))?.user.aiApiKey).toBe('sk-ant-test-key')
+      const before = (await store.loadUserRecord('user-1'))?.user
+      expect(before?.aiBaseUrl).toBeNull()
+      expect(before?.aiApiKey).toBeNull()
+      expect(before?.aiModel).toBeNull()
+      await store.writeUser({
+        ...sampleUser(),
+        aiBaseUrl: 'https://api.anthropic.com/v1',
+        aiApiKey: 'sk-ant-test-key',
+        aiModel: 'claude-sonnet-5',
+      })
+      const after = (await store.loadUserRecord('user-1'))?.user
+      expect(after?.aiBaseUrl).toBe('https://api.anthropic.com/v1')
+      expect(after?.aiApiKey).toBe('sk-ant-test-key')
+      expect(after?.aiModel).toBe('claude-sonnet-5')
     })
 
     it('writes a Position and reads it back on the User record', async () => {

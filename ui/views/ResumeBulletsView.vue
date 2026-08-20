@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { achievementsSince, buildSelfAssessmentPrompt, type Achievement, type SelfAssessmentEntry } from '../../domain/index.js'
+import { achievementsSince, buildResumeBulletsPrompt, type Achievement, type SelfAssessmentEntry } from '../../domain/index.js'
 import { AiError, askAi } from '../ai.js'
 import { record, today } from '../record.js'
 
 /** Set once, from Settings — every AI feature reads the same three fields from there (plan § AI is additive). */
 const isSetUp = computed(() => !!(record.user?.aiBaseUrl && record.user?.aiApiKey && record.user?.aiModel))
 
-// ── which entries feed the draft ─────────────────────────────────────────
+// ── which entries feed the bullets ───────────────────────────────────────
 function monthsAgo(months: number): string {
   const [year, month, day] = today().split('-').map(Number) as [number, number, number]
   const date = new Date(Date.UTC(year, month - 1, day))
@@ -16,12 +16,6 @@ function monthsAgo(months: number): string {
   return date.toISOString().slice(0, 10)
 }
 
-/**
- * A rolling "last N months" is the common case, but a review cycle usually starts on a
- * fixed date — the semester, the quarter — not on however many months back today happens
- * to be. In November, "last 6 months" reaches into May even if the cycle started in July,
- * so Custom lets the start date be stated directly instead of approximated.
- */
 const CUSTOM_RANGE = 'custom'
 const rangeChoice = ref<number | typeof CUSTOM_RANGE>(6)
 const customSince = ref(monthsAgo(6))
@@ -30,13 +24,7 @@ function sinceDate(): string {
   return rangeChoice.value === CUSTOM_RANGE ? customSince.value : monthsAgo(rangeChoice.value)
 }
 
-/**
- * A review is written for one employer at a time — an achievement from the job you left
- * four months ago, or a talk logged against no Position at all, has no business in a
- * draft for your current one. So this scopes to a single Position by default rather than
- * the whole log; "All positions" is there for the rarer case of a personal reflection
- * that is not tied to any one manager.
- */
+/** A résumé section is written for one job at a time — the same reasoning the self-assessment draft's own Position filter uses. */
 const ALL_POSITIONS = 'all'
 
 function defaultPositionFilter(): string {
@@ -61,33 +49,36 @@ const entries = computed<SelfAssessmentEntry[]>(() => {
   const positionName = new Map(record.positions.map((position) => [position.id, position.company]))
   const inRange = achievementsSince(record.achievements as Achievement[], sinceDate())
   const scoped =
-    positionFilter.value === ALL_POSITIONS
-      ? inRange
-      : inRange.filter((achievement) => achievement.positionId === positionFilter.value)
+    positionFilter.value === ALL_POSITIONS ? inRange : inRange.filter((achievement) => achievement.positionId === positionFilter.value)
   return scoped.map((achievement) => ({
     date: achievement.date,
     text: achievement.text,
     impact: achievement.impact,
-    position:
-      positionFilter.value === ALL_POSITIONS && achievement.positionId
-        ? (positionName.get(achievement.positionId) ?? null)
-        : null,
+    position: positionFilter.value === ALL_POSITIONS && achievement.positionId ? (positionName.get(achievement.positionId) ?? null) : null,
   }))
 })
 
-// ── generating the draft ─────────────────────────────────────────────────
-const draft = ref('')
+// ── generating the bullets ───────────────────────────────────────────────
+const bullets = ref<string[]>([])
 const busy = ref(false)
 const error = ref('')
 const copied = ref(false)
+
+/** The model is asked for one plain line per bullet — this just drops anything it added anyway (a stray marker, a blank line). */
+function toBullets(text: string): string[] {
+  return text
+    .split('\n')
+    .map((line) => line.replace(/^[-•*\d.\s]+/, '').trim())
+    .filter((line) => line.length > 0)
+}
 
 async function generate(): Promise<void> {
   error.value = ''
   if (!isSetUp.value || !record.user?.aiBaseUrl || !record.user.aiApiKey || !record.user.aiModel || entries.value.length === 0) return
   busy.value = true
   try {
-    const prompt = buildSelfAssessmentPrompt(entries.value)
-    draft.value = await askAi(record.user.aiBaseUrl, record.user.aiApiKey, record.user.aiModel, prompt)
+    const prompt = buildResumeBulletsPrompt(entries.value)
+    bullets.value = toBullets(await askAi(record.user.aiBaseUrl, record.user.aiApiKey, record.user.aiModel, prompt))
   } catch (cause) {
     error.value = cause instanceof AiError ? cause.message : String(cause)
   } finally {
@@ -95,9 +86,9 @@ async function generate(): Promise<void> {
   }
 }
 
-async function copyDraft(): Promise<void> {
+async function copyBullets(): Promise<void> {
   try {
-    await navigator.clipboard.writeText(draft.value)
+    await navigator.clipboard.writeText(bullets.value.join('\n'))
     copied.value = true
     setTimeout(() => (copied.value = false), 1500)
   } catch {
@@ -109,11 +100,11 @@ async function copyDraft(): Promise<void> {
 <template>
   <div class="board">
     <div class="intro">
-      <h2>Self-assessment draft</h2>
+      <h2>Résumé bullets</h2>
       <p class="note">
-        Turns a stretch of your achievement log into a first-person draft you'd hand to a
-        manager. It is a <b>Suggestion</b> — read it, edit it, throw it away — never
-        something Hyperion saves or acts on for you.
+        Turns a stretch of your achievement log into short, résumé-ready lines. It is a
+        <b>Suggestion</b> — read them, edit them, throw them away — never something Hyperion
+        saves or acts on for you.
       </p>
     </div>
 
@@ -167,17 +158,19 @@ async function copyDraft(): Promise<void> {
         </div>
 
         <button class="primary generate" :disabled="entries.length === 0 || busy" @click="generate">
-          {{ busy ? 'Drafting…' : draft ? 'Regenerate' : 'Generate draft' }}
+          {{ busy ? 'Drafting…' : bullets.length > 0 ? 'Regenerate' : 'Generate bullets' }}
         </button>
         <p v-if="error" class="error">{{ error }}</p>
       </div>
 
-      <div v-if="draft" class="panel">
+      <div v-if="bullets.length > 0" class="panel">
         <div class="draft-head">
-          <h3>Draft</h3>
-          <button class="linkbtn" @click="copyDraft">{{ copied ? 'copied' : 'copy' }}</button>
+          <h3>Bullets</h3>
+          <button class="linkbtn" @click="copyBullets">{{ copied ? 'copied' : 'copy all' }}</button>
         </div>
-        <textarea v-model="draft" rows="16"></textarea>
+        <ul class="bullets">
+          <li v-for="(bullet, index) in bullets" :key="index">{{ bullet }}</li>
+        </ul>
       </div>
     </template>
   </div>
@@ -360,16 +353,18 @@ button.ghost {
   color: var(--muted);
 }
 
-textarea {
-  width: 100%;
-  background: var(--page);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-control);
-  padding: 14px;
-  color: var(--text);
+.bullets {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bullets li {
   font-family: var(--serif);
   font-size: 14px;
-  line-height: 1.6;
-  resize: vertical;
+  line-height: 1.5;
+  color: var(--text);
 }
 </style>

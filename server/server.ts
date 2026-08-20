@@ -137,7 +137,9 @@ async function route(
       isAdmin: true,
       foldThresholdDays: 90,
       stallThresholdDays: 21,
+      aiBaseUrl: null,
       aiApiKey: null,
+      aiModel: null,
       compensationDisplay: 'monthly',
     }
     await auth.createUser(user)
@@ -169,7 +171,9 @@ async function route(
       isAdmin: false,
       foldThresholdDays: 90,
       stallThresholdDays: 21,
+      aiBaseUrl: null,
       aiApiKey: null,
+      aiModel: null,
       compensationDisplay: 'annual',
     }
     await auth.createUser(user)

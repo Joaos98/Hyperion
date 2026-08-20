@@ -237,7 +237,8 @@ there is a corpus to check against.
 
 ### 6. The rest of the AI layer
 
-- **Achievements → résumé bullets**, the first half of the loop the motivation describes
+- **Achievements → résumé bullets**, the first half of the loop the motivation describes —
+  **shipped**, below.
 - **Job description → gap analysis** against the record
 - Cover letter drafting, last, because it is the most common demo and the least useful outcome
 
@@ -809,6 +810,79 @@ the Add-Application form — never did. `ApplicationView.vue`'s header gained th
 the other sections already use, opening an inline form pre-filled from the current values. No domain
 or storage change — `saveApplication` already accepted a full row, this just gave the UI a way to
 send one back with those four fields changed.
+
+### Shipped — Achievements → résumé bullets
+
+2026-08-19, the first piece of § 6, built by request ahead of the other two. Follows the
+self-assessment draft's own mechanism exactly, since that pattern already existed and worked:
+a pure domain prompt-builder, `ui/ai.ts` sending it with the User's own key straight from the
+browser, the result rendered as a Suggestion (CONTEXT.md § Suggestion) — never saved, never acted
+on. `ui/ai.ts`'s `generateSelfAssessment` was generalized to `askClaude(apiKey, prompt, send)`,
+prompt-agnostic, since a second AI feature made three near-identical senders worse than one shared
+one; `domain/resume-bullets.ts`'s `buildResumeBulletsPrompt()` reuses the self-assessment draft's
+own `SelfAssessmentEntry` shape and Date/Position scoping unchanged, asking for short, action-verb
+lines instead of prose, quantified only where an Achievement's own Impact states a number.
+
+`ui/views/ResumeBulletsView.vue` mirrors `SelfAssessmentView.vue` closely, including its own
+self-contained API-key panel — duplicated rather than extracted to Settings, since that would have
+been a refactor of a separate, already-shipped, working feature beyond what was actually asked for
+here. Reached the same way the self-assessment draft is, from a second link on
+`AchievementsView.vue`, not from the top nav — matching "no separate dashboard," the same reasoning
+that kept the funnel and stall detection off a route of their own. Output renders as a plain list,
+each line the model returned, stripped of any stray numbering or bullet marker it added anyway.
+Verified end-to-end with a mocked Anthropic response: the built prompt, the entry scoping, and the
+list-splitting all check out against real Achievement data.
+
+### Shipped — AI Setup goes multi-provider
+
+2026-08-19, same day, on a direct request: "could we use a library... so they can use different
+providers/models." Two paths were checked and both turned out wrong for Hyperion specifically —
+worth recording why, since both looked reasonable at first.
+
+The Vercel AI SDK (`ai` + `@ai-sdk/*`) was installed, then reverted. It is a real, well-maintained,
+widely-used multi-provider abstraction, and its Anthropic provider does support direct-from-browser
+calls (`createAnthropic({ apiKey, headers })`, confirmed against current docs) — but Hyperion's own
+use is one-shot prompt-in, text-out, none of the streaming/chat/tool-use surface the SDK earns its
+keep on, and package.json had carried exactly four runtime dependencies until this session's own
+hand-rolled ZIP writer reinforced that restraint on the very same day. Fourteen packages for a
+capability comparable in size to `ui/ai.ts`'s existing ~30-line sender was the wrong trade for this
+project, even though the library itself is a fine choice in general.
+
+The fix that actually fit: **every provider gets targeted through the OpenAI-compatible
+chat-completions wire shape** most of them now expose (`AiPreset`, `ui/ai.ts`), so one function —
+still a plain `fetch`, no dependency — reaches Anthropic, Google Gemini, and anything else speaking
+the same shape, varying only base URL, key and model (CONTEXT.md § AI Setup). This nearly went
+wrong too: OpenAI itself turns out to send no CORS headers at all, so **no browser can call OpenAI
+directly regardless of request shape** — confirmed by research before committing to the design, not
+after. OpenAI is deliberately not one of the presets; a User pointing a custom base URL at it would
+just hit a clear, surfaced error, the same as any other unreachable endpoint.
+
+`domain/types.ts`'s `User.aiApiKey` (one field) became `aiBaseUrl` / `aiApiKey` / `aiModel` (three,
+all-or-nothing — CONTEXT.md § AI Setup), migration #5 on `storage/sqlite-store.ts`. Existing Users
+land back in the gated "needs setup" state, since a key alone no longer says where to send it or
+which model to ask for. `ui/ai.ts`'s `askClaude` became `askAi(baseUrl, apiKey, model, prompt,
+send)`; `AI_PRESETS` holds Anthropic and Google Gemini plus a Custom option that leaves the base URL
+free-text, reaching anything else that speaks this shape (a local model server, a provider not
+listed). Only Anthropic's model id is pre-filled (`claude-sonnet-5`, confirmed current) — Google's
+changes too often to guess at confidently, so its field is left for the User to fill in themselves
+rather than risk a stale default. Switching providers resets the model field rather than leaving a
+stale one behind, since a model id from one provider means nothing to another.
+
+Both `SelfAssessmentView.vue` and `ResumeBulletsView.vue` gained the same three-field setup panel in
+place of the old single key field, still duplicated between the two rather than extracted — the same
+call made when résumé bullets shipped, unchanged by this. Verified end-to-end in-browser: switching
+the provider preset correctly swaps the base URL and clears the model, saving persists all three
+fields, and a mocked response confirms the exact request (URL, headers, model, message) reaching a
+non-Anthropic endpoint.
+
+**Revised within the hour, on direct feedback, two fixes at once**: Custom only cleared the model
+field, not the base URL — `if (preset.baseUrl) baseUrlInput.value = preset.baseUrl` skipped the
+assignment for Custom's own empty string, so whichever preset's URL was there before it just sat,
+unlabeled as such. Unconditional assignment fixed it. Second, the duplication call above was
+reversed on request: the setup panel moved to `SettingsView.vue` as one shared "AI Setup" section,
+and both AI views collapsed to a plain `isSetUp` check with a link to Settings when it's not — the
+"a third AI view is what would justify this" threshold guessed at above never actually needed to be
+reached; being asked directly was enough.
 
 ### When a search starts
 

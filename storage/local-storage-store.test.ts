@@ -46,7 +46,9 @@ describe('LocalStorageStore — beyond the shared contract', () => {
       isAdmin: true,
       foldThresholdDays: 90,
       stallThresholdDays: 21,
+      aiBaseUrl: null,
       aiApiKey: null,
+      aiModel: null,
       compensationDisplay: 'annual',
     })
     const reopened = new LocalStorageStore(storage)
@@ -64,7 +66,7 @@ describe('LocalStorageStore — beyond the shared contract', () => {
         shape: 1,
         records: {
           'user-1': {
-            user: { id: 'user-1', displayName: 'João', isAdmin: true, foldThresholdDays: 90, stallThresholdDays: 21, aiApiKey: null },
+            user: { id: 'user-1', displayName: 'João', isAdmin: true, foldThresholdDays: 90, stallThresholdDays: 21, aiBaseUrl: null, aiApiKey: null, aiModel: null },
             positions: [],
             standingTerms: [],
             payments: [],
