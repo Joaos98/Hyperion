@@ -125,6 +125,15 @@ function chartAmount(money: { minor: number; currency: Currency }): string {
   return `${money.currency.symbol}${String(whole).replace(/\B(?=(\d{3})+$)/g, ',')}`
 }
 
+/** What each kind of pay change is called where a reader sees it. */
+const CHANGE_LABEL: Record<string, string> = {
+  starting: 'Starting terms',
+  raise: 'Raise',
+  promotion: 'Promotion',
+  cut: 'Reduction',
+  level: 'Unchanged',
+}
+
 /**
  * Label widths are estimated to decide which ones fit, so the estimate has to track the
  * size actually in effect — the narrow-screen bump below makes labels wider in viewBox
@@ -193,6 +202,52 @@ function labelled<T extends { x: number; label: string }>(marks: T[], perChar: n
   }
 
   return placed
+}
+
+/**
+ * Whatever the pointer (or the keyboard) is on. Held here rather than in a native
+ * `<title>`, which waits a second, cannot be styled and cannot show the exact figure
+ * beside the rounded one — the whole reason a point is worth hovering.
+ */
+interface Hovered {
+  key: string
+  x: number
+  y: number
+  detail: {
+    date: string
+    amount: string
+    per: string
+    change: string
+    percent?: string
+    rising: boolean
+    role: string
+    company: string
+  }
+}
+
+const hovered = ref<Hovered | undefined>()
+
+function show(mark: Hovered): void {
+  hovered.value = mark
+}
+
+function hide(mark: Hovered): void {
+  if (hovered.value?.key === mark.key) hovered.value = undefined
+}
+
+/**
+ * Positioned in percentages of the frame rather than pixels: the SVG scales to its column,
+ * so the only stable coordinates are the viewBox's own. Cards near the right edge hang off
+ * it otherwise, so past two-thirds across they anchor by their right edge instead.
+ */
+function cardStyle(mark: Hovered, height: number) {
+  const across = (mark.x + 16) / (CHART.width + 32)
+  const flip = across > 0.66
+  return {
+    left: `${across * 100}%`,
+    top: `${(mark.y / height) * 100}%`,
+    transform: `translate(${flip ? '-100%' : '0'}, -100%) translate(${flip ? '-10px' : '10px'}, -10px)`,
+  }
 }
 
 const chart = computed(() => {
@@ -315,9 +370,21 @@ const chart = computed(() => {
               // Always the figure actually paid, in the currency it was paid in: the rate
               // moves where a point sits, never what it says.
               label: chartAmount(asShown(point.money)),
-              title: `${point.date} · ${formatAmount(asShown(point.money))}${
-                point.percent === undefined ? '' : ` · ${point.percent >= 0 ? '+' : ''}${point.percent.toFixed(1)}%`
-              } · ${point.terms.title}`,
+              detail: {
+                date: point.date,
+                // The chart's own labels are rounded to fit; hovering one is where the
+                // exact figure lives, so this is the unrounded amount.
+                amount: formatAmount(asShown(point.money)),
+                per: period.value === 'monthly' ? 'a month' : 'a year',
+                change: CHANGE_LABEL[point.change] ?? '',
+                percent:
+                  point.percent === undefined
+                    ? undefined
+                    : `${point.percent >= 0 ? '+' : ''}${point.percent.toFixed(1)}%`,
+                rising: (point.percent ?? 0) >= 0,
+                role: point.terms.title,
+                company: line.position.company,
+              },
             })),
             charWidth.value,
           ),
@@ -328,7 +395,17 @@ const chart = computed(() => {
           payments: (paymentsByPosition.value.get(line.position.id) ?? []).map((payment) => ({
             key: payment.id,
             x: x(payment.date),
-            title: `${payment.date} · ${payment.label} · ${formatAmount({ minor: payment.amountMinor, currency: line.position.currency })}`,
+            detail: {
+              date: payment.date,
+              // Never divided by twelve: this arrived once (CONTEXT.md § Payment).
+              amount: formatAmount({ minor: payment.amountMinor, currency: line.position.currency }),
+              per: 'once',
+              change: payment.label,
+              percent: undefined,
+              rising: true,
+              role: '',
+              company: line.position.company,
+            },
           })),
         }
       }),
@@ -421,7 +498,8 @@ const perPosition = computed(() =>
             <button type="button" :class="{ on: period === 'annual' }" @click="setPeriod('annual')">Annual</button>
           </div>
         </div>
-        <svg v-if="chart" class="chart" :viewBox="`-16 0 ${CHART.width + 32} ${chart.height}`" role="img">
+        <div v-if="chart" class="plot">
+        <svg class="chart" :viewBox="`-16 0 ${CHART.width + 32} ${chart.height}`" role="img">
           <g v-for="panel in chart.panels" :key="panel.key">
             <text class="cur-label" :x="CHART.width" :y="panel.top - 12">{{ panel.label }}</text>
             <g v-for="crossing in panel.crossings" :key="crossing.key">
@@ -434,9 +512,20 @@ const perPosition = computed(() =>
               <path class="run" :class="{ cur: run.current }" :d="run.path" />
               <text class="company" :x="run.labelX" :y="panel.top - 12">{{ run.company }}</text>
               <g v-for="mark in run.marks" :key="mark.key">
-                <circle class="pt" :class="mark.change" :cx="mark.x" :cy="mark.y" r="3.5">
-                  <title>{{ mark.title }}</title>
-                </circle>
+                <circle class="pt" :class="mark.change" :cx="mark.x" :cy="mark.y" r="3.5" />
+                <circle
+                  class="hit"
+                  :cx="mark.x"
+                  :cy="mark.y"
+                  r="13"
+                  tabindex="0"
+                  role="button"
+                  :aria-label="`${mark.detail.date}, ${mark.detail.amount} ${mark.detail.per}, ${mark.detail.change}`"
+                  @mouseenter="show(mark)"
+                  @mouseleave="hide(mark)"
+                  @focus="show(mark)"
+                  @blur="hide(mark)"
+                />
                 <text
                   v-if="mark.show"
                   class="amt"
@@ -445,23 +534,46 @@ const perPosition = computed(() =>
                   :y="mark.y - 10"
                 >{{ mark.label }}</text>
               </g>
-              <line
-                v-for="payment in run.payments"
-                :key="payment.key"
-                class="pay"
-                :x1="payment.x"
-                :y1="panel.baseline - 5"
-                :x2="payment.x"
-                :y2="panel.baseline"
-              >
-                <title>{{ payment.title }}</title>
-              </line>
+              <g v-for="payment in run.payments" :key="payment.key">
+                <line class="pay" :x1="payment.x" :y1="panel.baseline - 5" :x2="payment.x" :y2="panel.baseline" />
+                <rect
+                  class="hit"
+                  :x="payment.x - 9"
+                  :y="panel.baseline - 16"
+                  width="18"
+                  height="22"
+                  tabindex="0"
+                  role="button"
+                  :aria-label="`${payment.detail.date}, ${payment.detail.change}, ${payment.detail.amount}`"
+                  @mouseenter="show({ key: payment.key, x: payment.x, y: panel.baseline - 8, detail: payment.detail })"
+                  @mouseleave="hide({ key: payment.key, x: payment.x, y: panel.baseline - 8, detail: payment.detail })"
+                  @focus="show({ key: payment.key, x: payment.x, y: panel.baseline - 8, detail: payment.detail })"
+                  @blur="hide({ key: payment.key, x: payment.x, y: panel.baseline - 8, detail: payment.detail })"
+                />
+              </g>
             </g>
           </g>
           <g v-for="tick in chart.ticks" :key="tick.year">
             <text class="tick" :x="tick.x" :y="chart.axisY + 14">{{ tick.year }}</text>
           </g>
         </svg>
+
+        <div v-if="hovered" class="card figures" :style="cardStyle(hovered, chart.height)">
+          <div class="card-h">{{ hovered.detail.date }}</div>
+          <div class="card-amt">
+            {{ hovered.detail.amount }}<span class="per">{{ hovered.detail.per }}</span>
+          </div>
+          <div class="card-change">
+            <span>{{ hovered.detail.change }}</span>
+            <span v-if="hovered.detail.percent" :class="hovered.detail.rising ? 'up' : 'down'">
+              {{ hovered.detail.percent }}
+            </span>
+          </div>
+          <div class="card-role">
+            <template v-if="hovered.detail.role">{{ hovered.detail.role }} · </template>{{ hovered.detail.company }}
+          </div>
+        </div>
+        </div>
         <p v-else class="note">No Standing Terms recorded yet — there is nothing to draw until a Position has some.</p>
 
         <template v-if="chart && chart.conversions.length > 0">
@@ -661,6 +773,72 @@ const perPosition = computed(() =>
   width: 100%;
   height: auto;
   overflow: visible;
+}
+
+.plot {
+  position: relative;
+}
+
+/* Sits above the drawing and never under the pointer, so moving toward it cannot make it flicker. */
+.card {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
+  white-space: nowrap;
+  padding: 9px 11px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  line-height: 1.4;
+}
+
+.card-h {
+  font-size: 10.5px;
+  color: var(--faint);
+}
+
+.card-amt {
+  font-size: 15px;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  margin-top: 2px;
+}
+
+.card-amt .per {
+  font-size: 10.5px;
+  color: var(--faint);
+  letter-spacing: 0;
+  /* Vue trims the leading space out of the template, so the gap is set here instead. */
+  margin-left: 5px;
+}
+
+.card-change {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 5px;
+}
+
+.card-role {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--faint);
+  margin-top: 3px;
+}
+
+.chart .hit {
+  fill: transparent;
+  stroke: none;
+  cursor: pointer;
+  outline: none;
+}
+
+.chart .hit:focus-visible {
+  stroke: var(--selene);
+  stroke-width: 1.5;
 }
 
 .chart .base {
