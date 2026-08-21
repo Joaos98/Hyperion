@@ -1,0 +1,35 @@
+# Nothing ran the suite before this: every push was trusted to whatever happened to have
+# been run locally. `better-sqlite3` is a native module, so `npm ci` compiles it here —
+# which also means this workflow proves the thing the Dockerfile does at build time.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the Dockerfile's base image, so a green run here means the image builds
+          # against the same major.
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # The demo build runs `vue-tsc` and Vite over the whole app, so a broken template or
+      # an unresolved import fails here rather than at publish time.
+      - name: Build
+        run: npm run build:demo
