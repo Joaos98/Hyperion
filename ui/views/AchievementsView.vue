@@ -45,8 +45,8 @@ const grouped = computed(() => {
 
     <p v-if="record.achievements.length === 0" class="empty">
       <b>Your log starts here.</b>
-      Write one line about something you did this week. It does not have to be impressive — in
-      March, when you need it, you will not remember it either way.
+      Write one line about something you did this week. It needn't be impressive — in March
+      you won't remember it either way.
     </p>
     <p v-else-if="results.length === 0" class="empty">Nothing matches “{{ query }}”.</p>
 

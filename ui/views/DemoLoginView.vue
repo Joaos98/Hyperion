@@ -29,8 +29,8 @@ async function enter(): Promise<void> {
     </form>
 
     <p class="facade-note">
-      This is a facade — the demo runs entirely in your browser, with no real server or
-      account behind it. Everything past this screen is fully editable.
+      A facade — the demo runs in your browser, with no server or account behind it.
+      Everything past this screen is editable.
     </p>
   </div>
 </template>

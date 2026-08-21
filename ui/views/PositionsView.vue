@@ -81,7 +81,7 @@ const showAddModal = ref(false)
 
     <div v-if="positions.length === 0" class="empty">
       <p><b>No Positions yet.</b></p>
-      <p class="note">Every other view — the Timeline, Compensation, your Achievement log — has nothing to reconstruct until at least one exists.</p>
+      <p class="note">The Timeline, Compensation and your Achievement log all have nothing to show until one exists.</p>
     </div>
 
     <template v-else>

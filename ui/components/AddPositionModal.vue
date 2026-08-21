@@ -72,7 +72,7 @@ async function submit(): Promise<void> {
         <h3>New Position</h3>
         <button class="close" @click="emit('close')">&times;</button>
       </div>
-      <p class="dialog-sub">This also records its Starting Terms — a Position with nothing yet to compute from is not much use on the timeline.</p>
+      <p class="dialog-sub">Also records its Starting Terms — a Position with nothing to compute from shows nothing.</p>
 
       <form class="form" @submit.prevent="submit">
         <label>Company <input v-model="company" type="text" required /></label>

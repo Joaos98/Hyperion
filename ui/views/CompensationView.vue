@@ -578,17 +578,16 @@ const perPosition = computed(() =>
 
         <template v-if="chart && chart.conversions.length > 0">
           <p v-for="entry in chart.conversions" :key="entry.code" class="converted">
-            Heights in {{ chart.into.code }} — {{ entry.code }} figures placed at
-            {{ describeRate(entry.found.recorded) }}, {{ entry.found.recorded.date }}. Every figure
-            below is what was actually paid, in the currency it was paid in.
+            Heights in {{ chart.into.code }}: {{ entry.code }} placed at
+            {{ describeRate(entry.found.recorded) }}, {{ entry.found.recorded.date }}. Figures
+            are unchanged.
           </p>
         </template>
 
         <div v-if="chart && chart.missing" class="unify">
           <p class="note">
-            This career crosses a currency, so it is drawn as one lane each rather than one
-            shape. A rate joins them<template v-if="awaitingRate > 0"> — and it is the same rate the
-            switch below needs</template>.
+            Two currencies, so a lane each. One rate joins them into a single
+            shape<template v-if="awaitingRate > 0"> — the same rate the switch below needs</template>.
           </p>
           <RatePrompt
             :from-code="chart.missing.fromCode"
@@ -597,15 +596,11 @@ const perPosition = computed(() =>
           />
         </div>
         <p class="note">
-          Base plus target bonus<template v-if="period === 'monthly'">, a twelfth of the annual
-          figure</template>, at every date it moved. A year in which nothing changed is
-          not drawn, because it is the same figure restated. Each job is its own run: the
-          stretch between two of them is an absence of compensation, not a compensation of
-          zero.<template v-if="anyPayments"> Ticks on the baseline are Payments — money that
-          arrived once, held off the scale because a bonus is not a rate the job pays.</template>
-          Figures here are rounded to whole units; a point's exact amount is on the point itself.
-          No inflation adjustment<template v-if="!chart || chart.conversions.length === 0">, and no currency
-          conversion</template>.
+          Base plus target bonus<template v-if="period === 'monthly'">, a twelfth of the
+          annual figure</template>, at every date it moved — years where nothing changed are
+          not drawn. Each job is its own run.<template v-if="anyPayments"> Baseline ticks are
+          Payments, held off the scale because a bonus is not a rate.</template> Hover a point
+          for its exact figure.
         </p>
       </div>
 

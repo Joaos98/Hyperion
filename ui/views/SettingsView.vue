@@ -292,9 +292,8 @@ onMounted(() => {
     <section class="panel">
       <h3>Your data</h3>
       <p class="note">
-        A zip of everything Hyperion holds for you — every row as JSON, plus your documents'
-        actual files. The same way <code>cp hyperion.db</code> is a complete self-hosted
-        backup, this is the portable version: open it anywhere, no server required.
+        A zip of every row as JSON, plus your documents' actual files. Opens anywhere, with
+        no server needed.
       </p>
       <p v-if="exportError" class="error">{{ exportError }}</p>
       <div class="actions">
@@ -304,9 +303,8 @@ onMounted(() => {
       </div>
 
       <p class="note import-note">
-        Restores from a zip this same export produced. Rows with matching ids are overwritten;
-        nothing already here is deleted, so importing onto existing data merges rather than
-        replaces it.
+        Restores a zip this export produced. Matching rows are overwritten and nothing is
+        deleted — it merges rather than replaces.
       </p>
       <p v-if="importError" class="error">{{ importError }}</p>
       <p v-if="importSummary" class="success">
@@ -324,10 +322,8 @@ onMounted(() => {
     <section v-if="currenciesOnRecord.length > 1" class="panel">
       <h3>Display Currency</h3>
       <p class="note">
-        Your record crosses more than one currency. This is the one your comparisons resolve
-        to — what a Switch Premium is measured in, and the scale the compensation chart is
-        drawn against. It never changes what an amount says: every figure still reads in the
-        currency it was actually paid in.
+        Which currency your comparisons resolve to, and the chart's scale. Amounts still read
+        in the currency they were paid in.
       </p>
       <div class="actions">
         <select v-model="chosenCurrency" class="picker" @change="saveDisplayCurrency">
@@ -343,9 +339,8 @@ onMounted(() => {
     <section class="panel">
       <h3>Stall Threshold</h3>
       <p class="note">
-        Days of silence before an Open Application shows up under "Needs attention" on the
-        Applications page. Silence is normal in a job search — this just sets where the line
-        sits for you, and it's worth tuning once you've watched a few go quiet.
+        Days of silence before an Open Application needs attention. Worth tuning once you've
+        watched a few go quiet.
       </p>
       <div class="actions">
         <input v-model.number="stallThresholdDays" type="number" min="1" class="num" @change="saveStallThreshold" />
@@ -356,10 +351,9 @@ onMounted(() => {
     <section class="panel">
       <h3>AI Setup</h3>
       <p class="note">
-        Powers the self-assessment draft and résumé bullets. Hyperion sends your entries
-        directly from your browser to whichever endpoint you configure, using a key only you
-        hold — never through this deployment's server, never anywhere else. Nothing works
-        until all three fields are set, and nothing sends anything until then.
+        Powers the self-assessment draft and résumé bullets. Entries go from your browser
+        straight to your endpoint, with your own key — never through this server. Inactive
+        until all three are set.
       </p>
 
       <div v-if="!isAiSetUp" class="setup-form">

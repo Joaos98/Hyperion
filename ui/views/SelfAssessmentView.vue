@@ -111,9 +111,8 @@ async function copyDraft(): Promise<void> {
     <div class="intro">
       <h2>Self-assessment draft</h2>
       <p class="note">
-        Turns a stretch of your achievement log into a first-person draft you'd hand to a
-        manager. It is a <b>Suggestion</b> — read it, edit it, throw it away — never
-        something Hyperion saves or acts on for you.
+        Your achievement log as a first-person draft for your manager. A
+        <b>Suggestion</b>: edit it or bin it — Hyperion never saves it or acts on it.
       </p>
     </div>
 
@@ -121,9 +120,8 @@ async function copyDraft(): Promise<void> {
     <div v-if="!isSetUp" class="panel gated">
       <p><b>Needs your own AI setup.</b></p>
       <p class="note">
-        Hyperion sends the entries below directly from your browser to whichever endpoint
-        you configure, using a key only you hold — never through this deployment's server,
-        never anywhere else. <RouterLink to="/settings">Configure it in Settings →</RouterLink>
+        Entries go from your browser straight to your endpoint, with your own key — never
+        through this server. <RouterLink to="/settings">Configure it in Settings →</RouterLink>
       </p>
     </div>
 

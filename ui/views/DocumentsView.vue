@@ -74,9 +74,8 @@ async function remove(id: string): Promise<void> {
 <template>
   <div class="board">
     <p class="intro">
-      Every résumé and cover letter version, kept as the actual file — not just a label. Attach
-      one to an Application from here or from the Application itself; a Document can go out with
-      more than one.
+      Every résumé and cover letter version, kept as the actual file. One can go out with
+      several Applications.
     </p>
 
     <button v-if="!uploadOpen" class="toggle" @click="uploadOpen = true">+ Upload a Document</button>
@@ -92,8 +91,7 @@ async function remove(id: string): Promise<void> {
 
     <p v-if="documents.length === 0" class="empty">
       <b>Nothing uploaded yet.</b>
-      Upload a résumé version here, before you have anywhere specific to send it — attaching it
-      to an Application is a separate step, whenever you need it.
+      Upload a résumé version now; attaching it to an Application is a separate step.
     </p>
 
     <div v-else class="list">

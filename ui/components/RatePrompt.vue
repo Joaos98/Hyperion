@@ -47,8 +47,8 @@ async function submit(): Promise<void> {
 <template>
   <div class="prompt">
     <p class="ask">
-      Comparing {{ toCode }} against {{ fromCode }} needs a rate for {{ on }}.
-      Hyperion fetches none — enter the one you want used.
+      Comparing {{ toCode }} against {{ fromCode }} needs a rate for {{ on }}. Hyperion
+      fetches none — enter the one to use.
     </p>
     <form @submit.prevent="submit">
       <span class="eq">1 {{ fromCode }} =</span>

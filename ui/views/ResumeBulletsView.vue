@@ -102,9 +102,8 @@ async function copyBullets(): Promise<void> {
     <div class="intro">
       <h2>Résumé bullets</h2>
       <p class="note">
-        Turns a stretch of your achievement log into short, résumé-ready lines. It is a
-        <b>Suggestion</b> — read them, edit them, throw them away — never something Hyperion
-        saves or acts on for you.
+        Your achievement log as short, résumé-ready lines. A <b>Suggestion</b>: edit them
+        or bin them — Hyperion never saves them or acts on them.
       </p>
     </div>
 
@@ -112,9 +111,8 @@ async function copyBullets(): Promise<void> {
     <div v-if="!isSetUp" class="panel gated">
       <p><b>Needs your own AI setup.</b></p>
       <p class="note">
-        Hyperion sends the entries below directly from your browser to whichever endpoint
-        you configure, using a key only you hold — never through this deployment's server,
-        never anywhere else. <RouterLink to="/settings">Configure it in Settings →</RouterLink>
+        Entries go from your browser straight to your endpoint, with your own key — never
+        through this server. <RouterLink to="/settings">Configure it in Settings →</RouterLink>
       </p>
     </div>
 
