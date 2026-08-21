@@ -46,11 +46,15 @@ export interface User {
   /** How long an Open Application may go silent before it counts as Stalled. */
   stallThresholdDays: number
   /**
-   * How a point-in-time salary figure (Standing Terms, Current Position) renders —
-   * never how one is stored, which stays annual throughout `domain/compensation.ts`
-   * regardless of this. A year-over-year total, like the Compensation page's chart,
-   * ignores this: dividing a whole year's figure by twelve would misrepresent it, not
-   * just redisplay it.
+   * How a point-in-time salary figure (Standing Terms, Current Position, the Compensation
+   * chart) renders — never how one is stored, which stays annual throughout
+   * `domain/compensation.ts` regardless of this.
+   *
+   * What this may be applied to is a *rate*: an annual figure a job pays, which divides by
+   * twelve to answer what it pays a month. It must not be applied to money that arrived
+   * once — a Payment is not a rate, and a signing bonus shown as a twelfth of itself would
+   * be a figure nobody was ever paid. The Compensation chart honours this for its Standing
+   * Terms and leaves its Payment marks alone for exactly that reason.
    */
   compensationDisplay: 'annual' | 'monthly'
   /**
