@@ -10,16 +10,18 @@ import {
   displayCurrency,
   findRate,
   formatAmount,
+  perMonth,
   stayPremium,
   switchPremiums,
   type Payment,
   type Position,
+  type Currency,
   type FoundRate,
   type RecordedRate,
   type StandingTerms,
   type User,
 } from '../../domain/index.js'
-import { record, today } from '../record.js'
+import { record, saveUser, today } from '../record.js'
 import RatePrompt from '../components/RatePrompt.vue'
 
 const positions = computed(() => [...(record.positions as Position[])].sort((a, b) => a.startDate.localeCompare(b.startDate)))
@@ -36,6 +38,24 @@ const paymentsByPosition = computed(() => {
 })
 
 const rates = computed(() => record.recordedRates as RecordedRate[])
+
+/**
+ * `User.compensationDisplay`, the same setting the Timeline, Positions and Position views
+ * already read and write — one preference flipped from wherever it is being read, rather
+ * than a control this chart owns privately and could disagree with them about.
+ *
+ * It applies to the line, which plots a rate a job pays. It deliberately does not apply to
+ * the Payment marks: a bonus arrived once and is not a twelfth of anything.
+ */
+const period = computed(() => record.user?.compensationDisplay ?? 'annual')
+
+async function setPeriod(value: 'annual' | 'monthly'): Promise<void> {
+  if (!record.user || period.value === value) return
+  await saveUser({ ...record.user, compensationDisplay: value })
+}
+
+const asShown = (annual: { minor: number; currency: Currency }) =>
+  period.value === 'monthly' ? perMonth(annual) : annual
 
 /**
  * The units every comparison on this page resolves to (CONTEXT.md § Display Currency) —
@@ -75,7 +95,77 @@ const awaitingRate = computed(() => switches.value.filter((entry) => entry.premi
  * below, not to a record of what each job paid (plan § 8). Time is shared across panels,
  * so a reader still sees when one currency gave way to the next.
  */
-const CHART = { width: 720, panelHeight: 108, panelGap: 44, axisHeight: 24, topPad: 30, headroom: 1.18 }
+const CHART = {
+  width: 720,
+  panelHeight: 150,
+  /** Between stacked panels: enough for the next one's company and currency labels. */
+  panelGap: 44,
+  /** Below the last panel, before the year row — which needs far less than a panel does. */
+  axisGap: 20,
+  axisHeight: 22,
+  topPad: 30,
+  headroom: 1.12,
+}
+
+/**
+ * A figure on the chart, at the precision a chart can carry: an annual salary's cents are
+ * noise at this size, and carrying them costs three characters per label — which is most
+ * of the difference between labels that fit and labels that collide. The exact amount is
+ * never lost; it sits in the point's own tooltip, and every other view still shows it in
+ * full.
+ */
+function chartAmount(money: { minor: number; currency: Currency }): string {
+  const whole = Math.round(money.minor / Math.pow(10, money.currency.decimals))
+  return `${money.currency.symbol}${String(whole).replace(/\B(?=(\d{3})+$)/g, ',')}`
+}
+
+/** Roughly how wide a label renders, for deciding which ones fit — IBM Plex Mono at 10px. */
+const CHAR_WIDTH = 6.1
+
+/**
+ * Which points get to show their figure, and how each one is anchored.
+ *
+ * Two raises close together put their labels on top of one another — on a real record the
+ * first two points collided by 32px and rendered as mush. A label is dropped rather than
+ * shrunk or angled: the point, the step in the line and the tooltip all still carry it,
+ * and an unreadable label communicates less than none. The newest figure always survives,
+ * since it is the one a reader came for; where it would collide, the label before it goes
+ * instead.
+ *
+ * Anchoring keeps the first and last labels inside the frame — centred on their point,
+ * they would hang off both ends.
+ */
+function labelled<T extends { x: number; label: string }>(marks: T[]) {
+  const width = (mark: T) => mark.label.length * CHAR_WIDTH
+  const placed = marks.map((mark, index) => {
+    const half = width(mark) / 2
+    const anchor: 'start' | 'middle' | 'end' =
+      mark.x - half < 0 ? 'start' : mark.x + half > CHART.width ? 'end' : 'middle'
+    const left = anchor === 'start' ? mark.x : anchor === 'end' ? mark.x - width(mark) : mark.x - half
+    return { ...mark, anchor, show: true, left, right: left + width(mark), last: index === marks.length - 1 }
+  })
+
+  let lastShown: (typeof placed)[number] | undefined
+  for (const mark of placed) {
+    if (!lastShown) {
+      lastShown = mark
+      continue
+    }
+    if (mark.left >= lastShown.right + 6) {
+      lastShown = mark
+      continue
+    }
+    // Collides. The newest figure wins its place; anything else yields to what came before.
+    if (mark.last) {
+      lastShown.show = false
+      lastShown = mark
+    } else {
+      mark.show = false
+    }
+  }
+
+  return placed
+}
 
 const chart = computed(() => {
   const into = display.value
@@ -175,24 +265,33 @@ const chart = computed(() => {
         )
         steps.push(`L ${x(line.endsAt)} ${at(line.points.at(-1)!)}`)
 
+        // The same shape closed down to the zero line. The scale is not truncated — a
+        // compensation record that started its axis at the lowest figure would make every
+        // career look steeper than it was — so the space under the line is real, and
+        // filling it reads as the level being held rather than as a void.
+        const area = `${steps.join(' ')} L ${x(line.endsAt)} ${top + CHART.panelHeight} L ${x(line.points[0]!.date)} ${top + CHART.panelHeight} Z`
+
         return {
           id: line.position.id,
           company: line.position.company,
           current: !line.position.departure,
           path: steps.join(' '),
+          area,
           labelX: x(line.points[0]!.date),
-          marks: line.points.map((point) => ({
-            key: point.terms.id,
-            x: x(point.date),
-            y: at(point),
-            change: point.change,
-            // Always the figure actually paid, in the currency it was paid in: the rate
-            // moves where a point sits, never what it says.
-            label: formatAmount(point.money),
-            title: `${point.date} · ${formatAmount(point.money)}${
-              point.percent === undefined ? '' : ` · ${point.percent >= 0 ? '+' : ''}${point.percent.toFixed(1)}%`
-            } · ${point.terms.title}`,
-          })),
+          marks: labelled(
+            line.points.map((point) => ({
+              key: point.terms.id,
+              x: x(point.date),
+              y: at(point),
+              change: point.change,
+              // Always the figure actually paid, in the currency it was paid in: the rate
+              // moves where a point sits, never what it says.
+              label: chartAmount(asShown(point.money)),
+              title: `${point.date} · ${formatAmount(asShown(point.money))}${
+                point.percent === undefined ? '' : ` · ${point.percent >= 0 ? '+' : ''}${point.percent.toFixed(1)}%`
+              } · ${point.terms.title}`,
+            })),
+          ),
           // Payments sit on the baseline rather than on the line: a bonus that arrived once
           // is not a rate the job pays, and giving it a height on this scale would invite a
           // comparison against the salary above it that means nothing (CONTEXT.md § Payment
@@ -207,7 +306,12 @@ const chart = computed(() => {
     }
   })
 
-  const height = CHART.topPad + panels.length * (CHART.panelHeight + CHART.panelGap) + CHART.axisHeight
+  const height =
+    CHART.topPad +
+    panels.length * CHART.panelHeight +
+    Math.max(0, panels.length - 1) * CHART.panelGap +
+    CHART.axisGap +
+    CHART.axisHeight
   const every = Math.ceil((lastYear - firstYear + 1) / 12)
   const ticks: { year: number; x: number }[] = []
   for (let year = firstYear; year <= lastYear; year++) {
@@ -281,7 +385,13 @@ const perPosition = computed(() =>
       </div>
 
       <div class="section">
-        <h3>What you were paid, as it changed</h3>
+        <div class="section-h">
+          <h3>What you were paid, as it changed</h3>
+          <div class="period-toggle">
+            <button type="button" :class="{ on: period === 'monthly' }" @click="setPeriod('monthly')">Monthly</button>
+            <button type="button" :class="{ on: period === 'annual' }" @click="setPeriod('annual')">Annual</button>
+          </div>
+        </div>
         <svg v-if="chart" class="chart" :viewBox="`-16 0 752 ${chart.height}`" role="img">
           <g v-for="panel in chart.panels" :key="panel.key">
             <text class="cur-label" x="720" :y="panel.top - 12">{{ panel.label }}</text>
@@ -291,13 +401,20 @@ const perPosition = computed(() =>
             </g>
             <line class="base" x1="0" :y1="panel.baseline" x2="720" :y2="panel.baseline" />
             <g v-for="run in panel.runs" :key="run.id">
+              <path class="area" :class="{ cur: run.current }" :d="run.area" />
               <path class="run" :class="{ cur: run.current }" :d="run.path" />
               <text class="company" :x="run.labelX" :y="panel.top - 12">{{ run.company }}</text>
               <g v-for="mark in run.marks" :key="mark.key">
                 <circle class="pt" :class="mark.change" :cx="mark.x" :cy="mark.y" r="3.5">
                   <title>{{ mark.title }}</title>
                 </circle>
-                <text class="amt" :x="mark.x" :y="mark.y - 9">{{ mark.label }}</text>
+                <text
+                  v-if="mark.show"
+                  class="amt"
+                  :class="mark.anchor"
+                  :x="mark.x"
+                  :y="mark.y - 10"
+                >{{ mark.label }}</text>
               </g>
               <line
                 v-for="payment in run.payments"
@@ -339,11 +456,13 @@ const perPosition = computed(() =>
           />
         </div>
         <p class="note">
-          Base plus target bonus, at every date it moved. A year in which nothing changed is
+          Base plus target bonus<template v-if="period === 'monthly'">, a twelfth of the annual
+          figure</template>, at every date it moved. A year in which nothing changed is
           not drawn, because it is the same figure restated. Each job is its own run: the
           stretch between two of them is an absence of compensation, not a compensation of
           zero.<template v-if="anyPayments"> Ticks on the baseline are Payments — money that
           arrived once, held off the scale because a bonus is not a rate the job pays.</template>
+          Figures here are rounded to whole units; a point's exact amount is on the point itself.
           No inflation adjustment<template v-if="!chart || chart.conversions.length === 0">, and no currency
           conversion</template>.
         </p>
@@ -451,6 +570,40 @@ const perPosition = computed(() =>
   line-height: 1.4;
 }
 
+.section-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.section-h h3 {
+  margin-bottom: 0;
+}
+
+.period-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.period-toggle button {
+  background: transparent;
+  border: 1px solid var(--hairline);
+  color: var(--faint);
+  border-radius: var(--radius-control);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+
+.period-toggle button.on {
+  color: var(--selene);
+  border-color: var(--selene);
+  background: var(--selene-wash);
+}
+
 .section h3 {
   font-size: 13px;
   margin-bottom: 14px;
@@ -466,6 +619,17 @@ const perPosition = computed(() =>
 .chart .base {
   stroke: var(--hairline);
   stroke-width: 1;
+}
+
+.chart .area {
+  fill: #262b38;
+  opacity: 0.55;
+  stroke: none;
+}
+
+.chart .area.cur {
+  fill: var(--selene);
+  opacity: 0.1;
 }
 
 .chart .run {
@@ -508,7 +672,18 @@ const perPosition = computed(() =>
 .chart .amt {
   font-size: 10px;
   fill: var(--text);
+}
+
+.chart .amt.middle {
   text-anchor: middle;
+}
+
+.chart .amt.start {
+  text-anchor: start;
+}
+
+.chart .amt.end {
+  text-anchor: end;
 }
 
 .chart .company {
