@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import {
   averageStayPremiumPercent,
@@ -96,7 +96,13 @@ const awaitingRate = computed(() => switches.value.filter((entry) => entry.premi
  * so a reader still sees when one currency gave way to the next.
  */
 const CHART = {
-  width: 720,
+  /*
+   * The viewBox scales to whatever width the column gives it, so this number sets the
+   * aspect ratio rather than a size: too narrow and the chart renders tall and its text
+   * renders shrunk, since font sizes below are in these same units. 1080 against a panel
+   * of 150 is roughly the proportion the section actually occupies now.
+   */
+  width: 1080,
   panelHeight: 150,
   /** Between stacked panels: enough for the next one's company and currency labels. */
   panelGap: 44,
@@ -119,8 +125,30 @@ function chartAmount(money: { minor: number; currency: Currency }): string {
   return `${money.currency.symbol}${String(whole).replace(/\B(?=(\d{3})+$)/g, ',')}`
 }
 
-/** Roughly how wide a label renders, for deciding which ones fit — IBM Plex Mono at 10px. */
-const CHAR_WIDTH = 6.1
+/**
+ * Label widths are estimated to decide which ones fit, so the estimate has to track the
+ * size actually in effect — the narrow-screen bump below makes labels wider in viewBox
+ * units, and an estimate stuck at the wide-screen size let two of them collide again.
+ * Tracked rather than assumed, so resizing the window re-lays the labels out.
+ */
+const NARROW = '(max-width: 1000px)'
+const narrow = ref(false)
+let watcher: MediaQueryList | undefined
+
+function syncNarrow(): void {
+  narrow.value = watcher?.matches ?? false
+}
+
+onMounted(() => {
+  watcher = window.matchMedia(NARROW)
+  syncNarrow()
+  watcher.addEventListener('change', syncNarrow)
+})
+
+onUnmounted(() => watcher?.removeEventListener('change', syncNarrow))
+
+/** IBM Plex Mono is about 0.61em per character at either size. */
+const charWidth = computed(() => (narrow.value ? 13 : 10) * 0.61)
 
 /**
  * Which points get to show their figure, and how each one is anchored.
@@ -135,8 +163,8 @@ const CHAR_WIDTH = 6.1
  * Anchoring keeps the first and last labels inside the frame — centred on their point,
  * they would hang off both ends.
  */
-function labelled<T extends { x: number; label: string }>(marks: T[]) {
-  const width = (mark: T) => mark.label.length * CHAR_WIDTH
+function labelled<T extends { x: number; label: string }>(marks: T[], perChar: number) {
+  const width = (mark: T) => mark.label.length * perChar
   const placed = marks.map((mark, index) => {
     const half = width(mark) / 2
     const anchor: 'start' | 'middle' | 'end' =
@@ -291,6 +319,7 @@ const chart = computed(() => {
                 point.percent === undefined ? '' : ` · ${point.percent >= 0 ? '+' : ''}${point.percent.toFixed(1)}%`
               } · ${point.terms.title}`,
             })),
+            charWidth.value,
           ),
           // Payments sit on the baseline rather than on the line: a bonus that arrived once
           // is not a rate the job pays, and giving it a height on this scale would invite a
@@ -384,7 +413,7 @@ const perPosition = computed(() =>
         </div>
       </div>
 
-      <div class="section">
+      <div class="section wide">
         <div class="section-h">
           <h3>What you were paid, as it changed</h3>
           <div class="period-toggle">
@@ -392,14 +421,14 @@ const perPosition = computed(() =>
             <button type="button" :class="{ on: period === 'annual' }" @click="setPeriod('annual')">Annual</button>
           </div>
         </div>
-        <svg v-if="chart" class="chart" :viewBox="`-16 0 752 ${chart.height}`" role="img">
+        <svg v-if="chart" class="chart" :viewBox="`-16 0 ${CHART.width + 32} ${chart.height}`" role="img">
           <g v-for="panel in chart.panels" :key="panel.key">
-            <text class="cur-label" x="720" :y="panel.top - 12">{{ panel.label }}</text>
+            <text class="cur-label" :x="CHART.width" :y="panel.top - 12">{{ panel.label }}</text>
             <g v-for="crossing in panel.crossings" :key="crossing.key">
               <line class="crossing" :x1="crossing.x" :y1="panel.top - 6" :x2="crossing.x" :y2="panel.baseline" />
               <text class="crossing-label" :x="crossing.x" :y="panel.top - 14">{{ crossing.label }}</text>
             </g>
-            <line class="base" x1="0" :y1="panel.baseline" x2="720" :y2="panel.baseline" />
+            <line class="base" x1="0" :y1="panel.baseline" :x2="CHART.width" :y2="panel.baseline" />
             <g v-for="run in panel.runs" :key="run.id">
               <path class="area" :class="{ cur: run.current }" :d="run.area" />
               <path class="run" :class="{ cur: run.current }" :d="run.path" />
@@ -523,10 +552,28 @@ const perPosition = computed(() =>
 </template>
 
 <style scoped>
+/*
+ * The measure belongs to the text, not to the column. 72ch is how wide a line of prose
+ * should run before it gets hard to follow — the captions, the empty state, the lists of
+ * figures — and the chart has no measure at all: it is a drawing, and capping it at a
+ * reading width left it using barely half the page while the space beside it did nothing.
+ */
 .board {
   display: flex;
   flex-direction: column;
   gap: 30px;
+}
+
+.board > * {
+  max-width: 72ch;
+}
+
+.board > .wide {
+  max-width: none;
+}
+
+/* The drawing takes the width; the prose under it keeps its measure regardless. */
+.board > .wide p {
   max-width: 72ch;
 }
 
@@ -713,6 +760,28 @@ const perPosition = computed(() =>
 .chart .tick {
   font-size: 9.5px;
   text-anchor: middle;
+}
+
+/*
+ * Every size above is in viewBox units, so text shrinks with the frame: the same 10px
+ * label renders at 10px in a full-width column and at 6px in a narrow one, which is past
+ * reading. These bumps buy it back — coarse, because the scale is continuous and a media
+ * query is not, but a legible approximation beats an illegible exact one.
+ */
+@media (max-width: 1000px) {
+  .chart .amt {
+    font-size: 13px;
+  }
+
+  .chart .company {
+    font-size: 13.5px;
+  }
+
+  .chart .tick,
+  .chart .cur-label,
+  .chart .crossing-label {
+    font-size: 12px;
+  }
 }
 
 .row {
