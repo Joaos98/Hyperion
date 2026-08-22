@@ -31,6 +31,21 @@ interface ChatCompletionsResponse {
 }
 
 /**
+ * The provider's own account of what went wrong, which is almost always more use than the
+ * status code — "The model is overloaded", "Please pass a valid API key".
+ *
+ * Google wraps its error object in an array (`[{ error: … }]`) where everyone else returns
+ * it bare, so reading `body.error` alone found nothing and every failure against Gemini
+ * reported only its status. Both shapes are unwrapped here rather than in the caller,
+ * since the caller has no reason to know which provider it is talking to.
+ */
+function providerMessage(body: unknown): string | undefined {
+  const first = Array.isArray(body) ? body[0] : body
+  const message = (first as ChatCompletionsResponse | undefined)?.error?.message
+  return typeof message === 'string' && message.trim() ? message : undefined
+}
+
+/**
  * Sends a prompt straight from the browser to any OpenAI-compatible chat-completions
  * endpoint, using the User's own key — every AI feature's shared sender, whichever domain
  * module built the prompt (a self-assessment draft, résumé bullets, or whatever joins them
@@ -85,12 +100,17 @@ export async function askAi(baseUrl: string, apiKey: string, model: string, prom
     throw new AiError(`Could not reach ${baseUrl}: ${String(cause instanceof Error ? cause.message : cause)}`)
   }
 
-  const body = (await readJson(response)) as ChatCompletionsResponse | undefined
+  const body = await readJson(response)
   if (!response.ok) {
-    throw new AiError(body?.error?.message ?? `${baseUrl} answered ${response.status}`)
+    const said = providerMessage(body)
+    // 503 from these endpoints is nearly always a busy model rather than anything the User
+    // has set wrong, and it is worth saying so — otherwise the obvious move is to go and
+    // re-check a key that was never the problem.
+    const hint = response.status === 503 ? ' The endpoint is busy — worth trying again shortly.' : ''
+    throw new AiError(said ? `${said}${hint}` : `${baseUrl} answered ${response.status}.${hint}`)
   }
 
-  const text = body?.choices?.[0]?.message?.content
+  const text = (body as ChatCompletionsResponse | undefined)?.choices?.[0]?.message?.content
   if (!text) throw new AiError(`${baseUrl} returned no text to draft from`)
   return text
 }

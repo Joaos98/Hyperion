@@ -56,6 +56,29 @@ describe('askAi', () => {
     await expect(askAi('https://api.example.com/v1', 'bad-key', 'model', 'prompt', send)).rejects.toThrow('invalid api key')
   })
 
+  it("reads Google's array-wrapped error object, not just the bare one", async () => {
+    // Google answers [{ error: … }] where everyone else answers { error: … }, so reading
+    // `body.error` alone threw the provider's own explanation away and reported a status.
+    const send = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(400, [{ error: { code: 400, message: 'Please pass a valid API key', status: 'INVALID_ARGUMENT' } }]))
+    await expect(askAi('https://generativelanguage.googleapis.com/v1beta/openai', 'bad', 'gemini', 'p', send)).rejects.toThrow(
+      'Please pass a valid API key',
+    )
+  })
+
+  it('says a 503 is a busy endpoint rather than something the User set wrong', async () => {
+    const send = vi.fn().mockResolvedValue(jsonResponse(503, [{ error: { message: 'The model is overloaded.' } }]))
+    await expect(askAi('https://generativelanguage.googleapis.com/v1beta/openai', 'k', 'gemini', 'p', send)).rejects.toThrow(
+      /overloaded.*trying again shortly/s,
+    )
+  })
+
+  it('falls back to the status when the provider explains nothing', async () => {
+    const send = vi.fn().mockResolvedValue(new Response('<html>gateway</html>', { status: 502 }))
+    await expect(askAi('https://example.test/v1', 'k', 'm', 'p', send)).rejects.toThrow('answered 502')
+  })
+
   it('turns a network failure into an AiError rather than throwing raw', async () => {
     const send = vi.fn().mockRejectedValue(new TypeError('fetch failed'))
     await expect(askAi('https://api.example.com/v1', 'key', 'model', 'prompt', send)).rejects.toThrow(AiError)
