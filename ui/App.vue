@@ -66,6 +66,7 @@ const isAuthScreen = computed(() => ['login', 'setup', 'register', 'demo-login']
 nav {
   display: flex;
   gap: 2px;
+  min-width: 0;
 }
 
 nav a {
@@ -74,6 +75,7 @@ nav a {
   padding: 6px 12px;
   border-radius: 6px;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 nav a.on {
@@ -91,6 +93,31 @@ nav a.on {
 
 .who:hover {
   color: var(--selene);
+}
+
+/*
+ * Seven links, a wordmark and a name do not fit one row much below a laptop, and a flex
+ * row that cannot fit does not shrink — it overflows, taking the whole page into a
+ * horizontal scroll with the name pushed off the right edge. Below that width the nav
+ * drops to its own row; narrower still, it scrolls within that row rather than pushing
+ * the page sideways.
+ */
+@media (max-width: 860px) {
+  .shell {
+    flex-wrap: wrap;
+    gap: 10px 16px;
+  }
+
+  nav {
+    order: 3;
+    flex-basis: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  nav::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 main {

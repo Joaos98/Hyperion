@@ -327,7 +327,16 @@ Named here so they stop coming back up:
   matching, classification, a suggestion queue, and an app password at rest in a database with no
   encryption story — and its value scales with a volume of applications you do not have. Stall
   detection catches forgotten applications from data already present, with no credentials and no
-  classifier. Build that, live through one real search, and revisit only with evidence.
+  classifier. Was held open pending "one real search and evidence"; closed 2026-08-21 without
+  waiting for either, by direct decision. Not deferred — ruled out.
+- **Tags on achievements.** Retrieval at review time is thematic, and search finds words where tags
+  find themes — an entry about unblocking a struggling colleague may never contain the word
+  "mentoring". That gap is real, and the price is still too high: a tag list needs create, rename,
+  merge and delete screens, and people tag inconsistently even from a fixed list, which produces a
+  dimension that looks authoritative and is not. FTS5 covers most of it, and the achievement log's
+  actual risk was never retrieval — it was the log staying empty. Was on § Decide after real use;
+  dropped 2026-08-21 by direct decision rather than waiting out the months of log it would have
+  taken to answer.
 - **Notifications of any kind.** See the principle above.
 - **Salary benchmarking, inflation adjustment, live equity valuation.** External data, stale between
   releases, and each would make Hyperion an advisor.
@@ -1090,16 +1099,11 @@ above — everything originally listed here is now built.
 
 ### Decide after real use
 
-Explicitly on no schedule, so a fast-moving build cannot quietly absorb them:
+Explicitly on no schedule, so a fast-moving build cannot quietly absorb them. Tags on achievements
+and email status detection were both on this list and are now decided — against, both of them
+(§ Deliberately not building). What remains:
 
-- **Tags on achievements.** Retrieval at review time is thematic, and search finds words while tags
-  find themes — an entry about unblocking a struggling colleague may never contain the word
-  "mentoring". Against: FTS5 covers much of it, a tag list needs create, rename, merge and delete
-  screens, and people tag inconsistently even from a fixed list. Decide after months of a real log,
-  which is the only way to learn whether the gap exists.
 - **Whether the staleness signal works**, or whether the log stays empty anyway.
-- **Email status detection**, only with a real corpus of recruiter mail and evidence that stall
-  detection was insufficient.
 
 ## Portfolio framing
 

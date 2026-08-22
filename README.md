@@ -129,8 +129,9 @@ library would have cost more than the code it replaced.
 
 Named so they stop coming back up: job-board aggregation, deriving achievements from pull
 requests and tickets (that means exporting company data onto your own hardware), a personal
-CRM, campaigns, offer comparison as a separate feature, email status detection, notifications
-of any kind, salary benchmarking, OKR frameworks, and sharing between Users.
+CRM, campaigns, offer comparison as a separate feature, email status detection, tags on
+achievements, notifications of any kind, salary benchmarking, OKR frameworks, and sharing
+between Users.
 
 `hyperion-plan.md` carries the reasoning for each, and for the ones that were dropped after
 being planned.
