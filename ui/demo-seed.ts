@@ -140,6 +140,38 @@ export async function seedDemo(store: HyperionStore, userId: UserId): Promise<vo
   await store.writeApplicationEvent({ id: mintId(), applicationId, stage: 'saved', date: '2026-07-10', note: null })
   await store.writeApplicationEvent({ id: mintId(), applicationId, stage: 'applied', date: '2026-07-14', note: null })
   await store.writeApplicationEvent({ id: mintId(), applicationId, stage: 'interview', date: '2026-08-05', note: null })
+
+  /**
+   * One Application that has gone quiet, so Stall detection is actually visible: with only
+   * the Anchor Labs one above — answered within the last three weeks — "Needs attention" on
+   * the Applications page never appears, and the feature is invisible in the published demo
+   * for the same reason currency conversion was before the career crossed a border.
+   *
+   * Silence is the ordinary case in a job search rather than a failure, which is why it
+   * reaches an Open Stage and simply stops rather than being Rejected.
+   */
+  const quietId = mintId()
+  await store.writeApplication({
+    id: quietId,
+    userId,
+    company: 'Halden Systems',
+    title: 'Senior Backend Engineer',
+    source: 'Job board',
+    postingUrl: null,
+    advertisedRange: null,
+    offeredTerms: null,
+    documentId: null,
+    priorApplicationId: null,
+  })
+  await store.writeApplicationEvent({ id: mintId(), applicationId: quietId, stage: 'saved', date: '2026-06-02', note: null })
+  await store.writeApplicationEvent({ id: mintId(), applicationId: quietId, stage: 'applied', date: '2026-06-08', note: null })
+  await store.writeApplicationEvent({
+    id: mintId(),
+    applicationId: quietId,
+    stage: 'screen',
+    date: '2026-06-19',
+    note: 'Recruiter call, said they would come back with next steps.',
+  })
 }
 
 function writeTerms(

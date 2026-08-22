@@ -276,7 +276,7 @@ function deltaPercent(event: StandingTermsEvent): number | undefined {
             <template v-else-if="row.event.kind === 'payment'">
               <div class="ev">
                 <b>{{ row.event.payment.label }}</b>
-                <span class="terms">{{ fmt(row.event.payment.amountMinor, row.event.position) }}</span>
+                <div class="terms">{{ fmt(row.event.payment.amountMinor, row.event.position) }}</div>
               </div>
             </template>
 

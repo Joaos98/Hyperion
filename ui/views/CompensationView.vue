@@ -321,24 +321,16 @@ const chart = computed(() => {
       CHART.headroom
     const y = (minor: number) => top + CHART.panelHeight - (minor / ceiling) * CHART.panelHeight
 
-    // Where one currency gives way to the next, on a scale that now spans both.
-    const crossings = unified
-      ? group.lines
-          .map((line, at) => ({ line, previous: group.lines[at - 1] }))
-          .filter(({ line, previous }) => previous && previous.position.currency.code !== line.position.currency.code)
-          .map(({ line, previous }) => ({
-            key: line.position.id,
-            x: x(line.points[0]!.date),
-            label: `${previous!.position.currency.code} → ${line.position.currency.code}`,
-          }))
-      : []
+    // No marker where one currency gives way to the next: it lands on the same x as the
+    // incoming job's own label and collided with it. The line beneath the chart already
+    // names which figures were placed and at what rate, which is the part that has to be
+    // said (CONTEXT.md § Converted).
 
     return {
       key: group.key + index,
       label: group.label,
       top,
       baseline: top + CHART.panelHeight,
-      crossings,
       runs: group.lines.map((line) => {
         const at = (point: { money: { minor: number } }) => y(heightOf(line, point.money.minor))
         const steps = line.points.flatMap((point, index) =>
@@ -502,10 +494,6 @@ const perPosition = computed(() =>
         <svg class="chart" :viewBox="`-16 0 ${CHART.width + 32} ${chart.height}`" role="img">
           <g v-for="panel in chart.panels" :key="panel.key">
             <text class="cur-label" :x="CHART.width" :y="panel.top - 12">{{ panel.label }}</text>
-            <g v-for="crossing in panel.crossings" :key="crossing.key">
-              <line class="crossing" :x1="crossing.x" :y1="panel.top - 6" :x2="crossing.x" :y2="panel.baseline" />
-              <text class="crossing-label" :x="crossing.x" :y="panel.top - 14">{{ crossing.label }}</text>
-            </g>
             <line class="base" x1="0" :y1="panel.baseline" :x2="CHART.width" :y2="panel.baseline" />
             <g v-for="run in panel.runs" :key="run.id">
               <path class="area" :class="{ cur: run.current }" :d="run.area" />
@@ -911,19 +899,6 @@ const perPosition = computed(() =>
   fill: var(--muted);
 }
 
-.chart .crossing {
-  stroke: var(--selene-dim);
-  stroke-width: 1;
-  stroke-dasharray: 3 3;
-}
-
-.chart .crossing-label {
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  fill: var(--selene);
-  text-anchor: middle;
-}
-
 .chart .cur-label {
   font-size: 9.5px;
   letter-spacing: 0.08em;
@@ -951,8 +926,7 @@ const perPosition = computed(() =>
   }
 
   .chart .tick,
-  .chart .cur-label,
-  .chart .crossing-label {
+  .chart .cur-label {
     font-size: 12px;
   }
 }

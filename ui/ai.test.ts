@@ -21,6 +21,23 @@ describe('askAi', () => {
     })
   })
 
+  it('sends the Anthropic browser header to Anthropic only', async () => {
+    // Google's preflight allows exactly content-type and authorization, so asking for a
+    // third header 403s and the browser reports a bare NetworkError.
+    const send = vi.fn().mockResolvedValue(jsonResponse(200, { choices: [{ message: { content: 'Draft.' } }] }))
+    await askAi('https://generativelanguage.googleapis.com/v1beta/openai', 'key', 'gemini', 'the prompt', send)
+    const [, init] = send.mock.calls[0] as [string, RequestInit]
+    expect(init.headers).not.toHaveProperty('anthropic-dangerous-direct-browser-access')
+    expect(init.headers).toMatchObject({ authorization: 'Bearer key' })
+  })
+
+  it('sends no Anthropic header to a custom endpoint either', async () => {
+    const send = vi.fn().mockResolvedValue(jsonResponse(200, { choices: [{ message: { content: 'Draft.' } }] }))
+    await askAi('http://localhost:11434/v1', 'key', 'llama', 'the prompt', send)
+    const [, init] = send.mock.calls[0] as [string, RequestInit]
+    expect(init.headers).not.toHaveProperty('anthropic-dangerous-direct-browser-access')
+  })
+
   it('strips a trailing slash from the base URL before appending the path', async () => {
     const send = vi.fn().mockResolvedValue(jsonResponse(200, { choices: [{ message: { content: 'Draft.' } }] }))
     await askAi('https://api.example.com/v1/', 'key', 'model', 'prompt', send)

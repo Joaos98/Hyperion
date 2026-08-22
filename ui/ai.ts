@@ -47,11 +47,24 @@ interface ChatCompletionsResponse {
  * Note this rules out OpenAI itself as a base URL: its API sends no CORS headers at all,
  * so no browser can call it directly regardless of request shape — not something this
  * function can work around, since the constraint is on OpenAI's own servers, not the
- * request. `anthropic-dangerous-direct-browser-access` is sent unconditionally because
- * Anthropic's API requires it for a browser-origin request to pass CORS at all, even
- * against its OpenAI-compatible endpoint; other providers simply ignore a header they
- * don't recognise.
+ * request.
+ *
+ * `anthropic-dangerous-direct-browser-access` goes only to Anthropic, which requires it for
+ * a browser-origin request to pass CORS at all. It used to be sent to everyone, on the
+ * reasoning that a provider ignores a header it does not recognise — true of a server
+ * reading the request, and false of the preflight that decides whether the request is ever
+ * made. Google's `access-control-allow-headers` lists exactly `content-type` and
+ * `authorization`, so asking for a third header returned 403 and the browser reported only
+ * a NetworkError, naming nothing.
  */
+function isAnthropic(baseUrl: string): boolean {
+  try {
+    return new URL(baseUrl).hostname.endsWith('anthropic.com')
+  } catch {
+    return false
+  }
+}
+
 export async function askAi(baseUrl: string, apiKey: string, model: string, prompt: string, send: typeof fetch = fetch): Promise<string> {
   const url = `${baseUrl.replace(/\/+$/, '')}/chat/completions`
   let response: Response
@@ -61,7 +74,7 @@ export async function askAi(baseUrl: string, apiKey: string, model: string, prom
       headers: {
         'content-type': 'application/json',
         authorization: `Bearer ${apiKey}`,
-        'anthropic-dangerous-direct-browser-access': 'true',
+        ...(isAnthropic(baseUrl) ? { 'anthropic-dangerous-direct-browser-access': 'true' } : {}),
       },
       body: JSON.stringify({
         model,
