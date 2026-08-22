@@ -21,14 +21,27 @@ const serverBuild = isServerBuild()
 const isAdmin = record.user?.isAdmin ?? false
 
 // ── stall threshold (CONTEXT.md § Stall Threshold) ──────────────────────────
+/**
+ * Saved on a button rather than on change. A number typed a digit at a time passes through
+ * values nobody meant — 2 on the way to 21 — and committing each of them writes a setting
+ * the User never chose. The picker below can commit on change because choosing an option
+ * *is* the gesture; typing has no such moment, so it gets an explicit one.
+ */
 const stallThresholdDays = ref(record.user?.stallThresholdDays ?? 21)
 const savingThreshold = ref(false)
+/** Only after a save in this visit — otherwise the panel would greet everyone with "Saved". */
+const thresholdSaved = ref(false)
+
+const thresholdChanged = computed(
+  () => stallThresholdDays.value >= 1 && stallThresholdDays.value !== record.user?.stallThresholdDays,
+)
 
 async function saveStallThreshold(): Promise<void> {
-  if (!record.user || stallThresholdDays.value < 1) return
+  if (!record.user || !thresholdChanged.value) return
   savingThreshold.value = true
   try {
     await saveUser({ ...record.user, stallThresholdDays: stallThresholdDays.value })
+    thresholdSaved.value = true
   } finally {
     savingThreshold.value = false
   }
@@ -343,8 +356,19 @@ onMounted(() => {
         watched a few go quiet.
       </p>
       <div class="actions">
-        <input v-model.number="stallThresholdDays" type="number" min="1" class="num" @change="saveStallThreshold" />
-        <span class="unit">days{{ savingThreshold ? '…' : '' }}</span>
+        <input
+          v-model.number="stallThresholdDays"
+          type="number"
+          min="1"
+          class="num"
+          @input="thresholdSaved = false"
+          @keyup.enter="saveStallThreshold"
+        />
+        <span class="unit">days</span>
+        <button class="ghost" :disabled="!thresholdChanged || savingThreshold" @click="saveStallThreshold">
+          {{ savingThreshold ? 'Saving…' : 'Save' }}
+        </button>
+        <span v-if="thresholdSaved && !thresholdChanged && !savingThreshold" class="unit saved">Saved</span>
       </div>
     </section>
 
@@ -660,6 +684,11 @@ h3 {
 .unit {
   font-size: 12.5px;
   color: var(--muted);
+}
+
+.unit.saved {
+  color: var(--rise);
+  font-size: 12px;
 }
 
 button.primary {
