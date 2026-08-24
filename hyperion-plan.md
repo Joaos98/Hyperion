@@ -502,9 +502,13 @@ is one unbroken line, on an edge case is the wrong trade regardless of how it lo
 
 - **No dashboard.** Home is the Timeline. A screen summarising five things already visible is the
   personal-app feature that gets opened twice.
-- **Capture repeats on two screens** — Home and Achievements — **and identically again** as of
-  2026-08-24. Both are the Log-achievement card opening `LogAchievementModal` (any date, any
-  Position, optional Impact). The split that opened when the modal shipped is closed: the inline box
+- **Capture repeats on two screens** — Home and Achievements — and the *mechanism* is identical
+  again as of 2026-08-24: both open `LogAchievementModal` (any date, any Position, optional Impact),
+  one click, one implementation. What differs per page is only the chrome around the button, and
+  that is deliberate — Home's is a card in the sidebar, Achievements' is an actions row alongside
+  the two drafting actions (§ Shipped — the Achievements actions row), Position detail's is a
+  `.toggle` beside "+ Add Payment". The convention that matters is that there is one capture, not
+  that it wears one frame. The split that opened when the modal shipped is closed: the inline box
   could only ever log today, against the current Position, with no Impact, and the argument for
   keeping it — that Achievements had no room to spend on a modal — was about the sidebar's width,
   which a modal does not take from the page it opens over. Capture is still one click on both.
@@ -1167,6 +1171,36 @@ deployment fails safe"), so it undid the guarantee between people sharing one de
 one against the open internet. Three tests in `server/server.test.ts` cover it — an ordinary
 settings save still lands, the bit is refused, and a body naming another id writes the sender's own
 row — and all three were confirmed to fail against the old handler before the fix went in.
+
+### Shipped — the Achievements actions row
+
+2026-08-24. The page carried three actions in three shapes: a Log-achievement card, then two plain
+text links to the drafting pages, then the search box. The links were the complaint — they read as
+footnotes for two features that write prose for you.
+
+Designed on a canvas first, five directions (`design/canvas-achievements/`). **Option E** chosen:
+no card, the selene primary with its staleness line inline beside it on the left, the two drafting
+actions as outline buttons stacked on the right, the short side centred against the tall one.
+
+**The argument that picked it** was the label, not the layout. On one line the drafts have to clip
+to "Self-assessment →"; stacking gives each its own line and the verb survives — "Draft a
+self-assessment →". A button that generates prose wants the verb; the noun reads like a section
+heading. That ruled out the otherwise-tighter one-line strip.
+
+They are `RouterLink`s wearing button styling, not `<button>`s: they navigate, so middle-click and
+copy-link-address still work.
+
+**The trailing note went** — "No tags, no categories, no required fields…" — on the grounds that it
+described the page to someone already looking at it.
+
+**Fixed alongside**: the modal's date input spilled past the dialog's right edge. A date control
+carries an intrinsic width of its own and a grid item defaults to `min-width: auto`, so it refused
+to shrink into its 150px track.
+
+**Corrected after review**: the no-Positions sentence is too long to sit beside the button the way
+the staleness line does — it takes the whole row's width and drops beneath instead of squeezing the
+row; the drafts hold their right alignment once the row wraps, which `space-between` alone does not
+do; and the button's padding went back in step with Home's after drifting a pixel from the mockup.
 
 ### When a search starts
 

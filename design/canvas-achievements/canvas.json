@@ -1,0 +1,91 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "title": "Option A — card keeps the primary",
+      "x": 0,
+      "y": 0,
+      "w": 640,
+      "h": 880
+    },
+    {
+      "file": "OptionB.dc.html",
+      "title": "Option B — one card, divided",
+      "x": 700,
+      "y": 0,
+      "w": 640,
+      "h": 820
+    },
+    {
+      "file": "OptionC.dc.html",
+      "title": "Option C — toolbar strip",
+      "x": 1400,
+      "y": 0,
+      "w": 640,
+      "h": 760
+    },
+    {
+      "file": "OptionD.dc.html",
+      "title": "Option D — two columns, drafts stacked",
+      "x": 2100,
+      "y": 0,
+      "w": 640,
+      "h": 780
+    },
+    {
+      "file": "OptionE.dc.html",
+      "title": "Option E — staleness inline, drafts stacked",
+      "x": 2800,
+      "y": 0,
+      "w": 640,
+      "h": 780
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -190,
+      "w": 420,
+      "text": "Achievements page — one actions row.\n\nThree actions, two weights: logging is the everyday one and opens a modal; the two drafting actions are occasional and navigate away. Every artboard shows the row in context (search + two entries) and the no-Positions state beneath the dashed rule."
+    },
+    {
+      "id": "note-a",
+      "x": 0,
+      "y": 920,
+      "w": 420,
+      "text": "Least change, clearest hierarchy. The card stays exactly as shipped and the two drafts become outline buttons under it — separation carries the weighting, so nothing competes with the selene button.\n\nTradeoff: it is not really one row. Three stacked bands before you reach the search box, and the page's vertical budget is already the thing that pushed the note out."
+    },
+    {
+      "id": "note-b",
+      "x": 700,
+      "y": 860,
+      "w": 420,
+      "text": "One card, all three actions, a hairline divider saying the two on the right are a different kind of thing. Fill vs outline does the weighting; the staleness line keeps its place underneath.\n\nTradeoff: labels have to shorten to fit 68ch — 'Self-assessment →' rather than 'Draft a self-assessment from this log →' — so the row leans on the page's context to stay legible."
+    },
+    {
+      "id": "note-c",
+      "x": 1400,
+      "y": 800,
+      "w": 420,
+      "text": "No card at all. One strip: primary left, staleness taking the slack in the middle, the two drafts pushed right. Recovers the most vertical space, and the staleness line stops being a third row.\n\nTradeoff: the strip has no surface behind it, so on a page that is otherwise all list, the actions read as slightly less anchored — and it is the tightest fit at 68ch, with least room if a label ever grows."
+    },
+    {
+      "id": "note-d",
+      "x": 2100,
+      "y": 820,
+      "w": 420,
+      "text": "Option C's strip, split into two columns: primary and its staleness line on the left, the two drafts stacked on the right.\n\nWhat it buys over C: stacking gives each draft button its own line, so the full labels fit again — \"Draft a self-assessment →\" rather than C's clipped \"Self-assessment →\". The staleness line also stops competing for the middle of the row.\n\nTradeoff: two columns of different heights leave a ragged bottom edge, and the drafts now occupy the same vertical band as the primary rather than clearly sitting below it — closer to equal weight than C is."
+    },
+    {
+      "id": "note-e",
+      "x": 2800,
+      "y": 820,
+      "w": 420,
+      "text": "D's stacked drafts with C's inline staleness: the left side becomes one line — button, then \"Last logged 277 days ago\" beside it — and the whole row centres against the right column's two buttons.\n\nCorrection to what I said proposing this: it does not level the columns. The left is one line, the right is two, so they cannot match. What it removes is the ragged BOTTOM edge — nothing is bottom-aligned any more, the short side centres against the tall one, and the imbalance reads as deliberate rather than left over.\n\nTradeoff: the empty state is where it strains — \"Add a Position first — an Achievement needs one to belong to\" has to share one line with the disabled button, so it wraps to two and the centring works harder than it does in the normal state."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

@@ -8,9 +8,9 @@ import LogAchievementModal from '../components/LogAchievementModal.vue'
 const query = ref('')
 
 // ── Capture (plan § Conventions: "Capture repeats on two screens") ──────────
-// The same Log-achievement card Home carries, and for the same reason: the inline box
-// could only ever log today, against the current Position, with no Impact — three fields
-// the Achievement already had and nothing here could reach. Capture is still one click.
+// The same modal Home opens, for the same reason: the inline box could only ever log
+// today, against the current Position, with no Impact — three fields the Achievement
+// already had and nothing here could reach. Capture is still one click.
 const showLogModal = ref(false)
 const positions = computed(() => record.positions as Position[])
 const currentPosition = computed(() => positions.value.find((position) => position.departure === null))
@@ -43,24 +43,22 @@ const grouped = computed(() => {
 
 <template>
   <div class="board">
-    <div class="card">
-      <div class="log-row">
-        <span class="log-label">What did you ship?</span>
+    <div class="actions">
+      <div class="actions-log">
         <button class="log-btn" :disabled="positions.length === 0" @click="showLogModal = true">+ Log achievement</button>
+        <template v-if="positions.length > 0">
+          <p v-if="staleness === undefined" class="log-note">Nothing logged yet.</p>
+          <p v-else-if="staleness > 0" class="log-note">Last logged <b>{{ staleness }}</b> day{{ staleness === 1 ? '' : 's' }} ago</p>
+          <p v-else class="log-note">Logged today.</p>
+        </template>
       </div>
-      <p v-if="positions.length === 0" class="log-none">
+      <div class="actions-drafts">
+        <RouterLink to="/self-assessment" class="draft-btn">Draft a self-assessment →</RouterLink>
+        <RouterLink to="/resume-bullets" class="draft-btn">Draft résumé bullets →</RouterLink>
+      </div>
+      <p v-if="positions.length === 0" class="log-note whole-row">
         Add a <RouterLink to="/positions">Position</RouterLink> first — an Achievement needs one to belong to.
       </p>
-      <template v-else>
-        <p v-if="staleness === undefined" class="log-stale">Nothing logged yet.</p>
-        <p v-else-if="staleness > 0" class="log-stale">Last logged <b>{{ staleness }}</b> day{{ staleness === 1 ? '' : 's' }} ago</p>
-        <p v-else class="log-stale">Logged today.</p>
-      </template>
-    </div>
-
-    <div class="draft-links">
-      <RouterLink to="/self-assessment" class="draft-link">Draft a self-assessment from this log →</RouterLink>
-      <RouterLink to="/resume-bullets" class="draft-link">Draft résumé bullets from this log →</RouterLink>
     </div>
 
     <input v-model="query" type="text" class="search" placeholder="Search your achievements…" />
@@ -87,12 +85,6 @@ const grouped = computed(() => {
       </div>
     </div>
 
-    <p class="note">
-      No tags, no categories, no required fields. Search is full-text over the prose above —
-      whether that is enough stays an open question until there are months of real entries to
-      answer it with.
-    </p>
-
     <LogAchievementModal v-if="showLogModal" :default-position-id="currentPosition?.id" @close="showLogModal = false" />
   </div>
 </template>
@@ -105,24 +97,41 @@ const grouped = computed(() => {
   max-width: 68ch;
 }
 
-/* The Log-achievement card, the same shape Home's sidebar carries. */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-card);
-  padding: 18px 20px;
-}
-
-.log-row {
+/*
+ * One actions row: the primary and its staleness line on the left, the two drafting
+ * actions stacked on the right, the short side centred against the tall one. Stacking is
+ * what pays for the labels — on one line the drafts have to clip to "Self-assessment",
+ * and a button that writes prose for you wants the verb.
+ */
+.actions {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: 20px;
+  row-gap: 12px;
+}
+
+.actions-log {
+  display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.log-label {
-  font-size: 14px;
-  color: var(--muted);
+/* Right of the row, and still right of it once the row wraps — `space-between` alone
+   left-aligns whichever item ends up alone on the second line. */
+.actions-drafts {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* The no-Positions sentence is too long to sit beside the button the way the staleness
+   line does, so it takes the whole width and drops under the row instead of squeezing it. */
+.whole-row {
+  flex-basis: 100%;
 }
 
 .log-btn {
@@ -144,38 +153,37 @@ const grouped = computed(() => {
   cursor: default;
 }
 
-.log-stale,
-.log-none {
+.log-note {
   font-size: 12.5px;
   color: var(--muted);
-  margin: 12px 0 0;
+  margin: 0;
 }
 
-.log-stale b {
+.log-note b {
   color: var(--selene);
   font-weight: 500;
 }
 
-.log-none a {
+.log-note a {
   color: var(--selene);
   text-decoration: underline;
 }
 
-.draft-links {
-  align-self: flex-start;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.draft-link {
-  font-size: 12.5px;
-  color: var(--faint);
+/* Links, not buttons — they navigate, so middle-click and copy-link still work. */
+.draft-btn {
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-control);
+  color: var(--muted);
+  padding: 7px 13px;
+  font-size: 12px;
   text-decoration: none;
+  white-space: nowrap;
 }
 
-.draft-link:hover {
+.draft-btn:hover {
   color: var(--selene);
+  border-color: var(--selene);
 }
 
 .search {
@@ -258,11 +266,5 @@ const grouped = computed(() => {
 
 .remove:hover {
   color: var(--fall);
-}
-
-.note {
-  color: var(--faint);
-  font-size: 12px;
-  margin-top: 8px;
 }
 </style>

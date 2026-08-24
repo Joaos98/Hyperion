@@ -161,6 +161,7 @@ async function submit(): Promise<void> {
   gap: 5px;
   font-size: 12.5px;
   color: var(--muted);
+  min-width: 0;
 }
 
 .form input,
@@ -173,6 +174,11 @@ async function submit(): Promise<void> {
   color: var(--text);
   font-size: 13.5px;
   font-family: var(--sans);
+  /* A date input carries an intrinsic width of its own — wider than the track it sits in
+     — and a grid item defaults to min-width: auto, so it refused to shrink and spilled out
+     past the dialog's right edge. These two let the control take the width it is given. */
+  min-width: 0;
+  width: 100%;
 }
 
 .form textarea {
