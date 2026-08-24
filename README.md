@@ -92,8 +92,18 @@ closes for good the moment it exists.
 
 After that, registration is invite-only: the Admin generates a single-use code in Settings and hands
 over the code or the `/register?code=…` link it copies. Settings also lists every account to an
-Admin, with a password reset per row — there is no email anywhere in this app, so that reset is the
-only way back in for somebody who forgets.
+Admin, with a password reset per row — there is no email anywhere in this app, so that is how
+somebody who forgets gets back in.
+
+If the one who forgets is the only Admin, there is nobody left to ask, and the way back is a command
+against the database file:
+
+```bash
+docker compose exec hyperion node dist-server/reset-password.js "Your Name"
+```
+
+It prompts for the new password rather than taking it as an argument, and signs that account out
+everywhere. Run it with no name to list the accounts.
 
 One container, one process, one SQLite file — the volume is the whole of the deployment's state, and
 `cp hyperion.db` is a complete backup. Exporting your data from Settings is the portable half of

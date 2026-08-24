@@ -158,9 +158,16 @@ Argon2id for hashing.
 
 **No email-based password reset.** That needs SMTP, which the app does not have and will not get. An
 Admin resets other Users' passwords — built, and reachable from Settings, which also invalidates that
-User's Sessions. The Admin's own reset was to be "a command run against the SQLite file"; **that
-command was never written**, so a sole Admin who forgets their password currently has no route back
-in short of editing the database by hand. Known gap, not a decision.
+User's Sessions. The Admin's own reset is a command run against the SQLite file, `npm run
+reset-password -- "<display name>"` (`server/reset-password.ts`, bundled to `dist-server/` beside
+the server so the container carries it). **Shipped 2026-08-24**, having been promised here and never
+written until the gap was noticed.
+
+It reads the new password from stdin rather than argv, so it never lands in shell history or in
+`ps`; asks twice when it has a terminal; lists every account when the name given does not match one;
+and ends that account's Sessions the way the Admin-facing route does. It is deliberately **not**
+restricted to Admins — whoever can run it already holds the database file and every record in it, so
+a permission check would protect nothing while locking out the one case it exists for.
 
 ## Feature set
 
