@@ -146,6 +146,10 @@ being planned.
 
 ## Status
 
-In daily use on real data. The plan's numbered build order is complete; equity — grants as
-dated tranches, vested tranches becoming Payments — is the one feature still unbuilt, and it
-waits until there is equity to record.
+Built, and in daily use on real data. Every feature the plan set out is shipped; what is left in it
+is a short list of things that want time and real use to answer, not code.
+
+Equity is the one shape the model holds room for without holding data — grants as dated tranches,
+vested tranches becoming Payments. It is designed and deliberately not built: a total compensation
+with no grants in it is complete rather than missing something, and there is no equity here to
+record.

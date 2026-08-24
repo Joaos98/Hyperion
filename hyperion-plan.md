@@ -293,17 +293,24 @@ Worth saying plainly, since it is the reason to want any of this: converting a S
 dollars says very little about whether you are better off, because cost of living dominates and no
 exchange rate captures it. That judgement is yours. Hyperion shows the rate it used and stops there.
 
-### 9. Equity
+### 9. Equity — room in the model, not a feature to build
 
-Grants recorded at their value when made, with vesting stored as **dated tranches** rather than as
-schedule shapes — any schedule reduces to a list of dates and amounts, and a form with the usual
-presets can generate them. Vested tranches are Payments. Total compensation for a year then includes
-what actually vested during it, which is the true figure: a refresher granted in March with a
-one-year cliff contributes nothing that year, while dividing each grant by its length would count
-money nobody has received.
+**Not a to-do**, as of 2026-08-24. There is no equity in the record and none in prospect, and this
+plan already answered what that means: a total comp with no equity grants in it is *simply complete*,
+not missing something. So this section stops being the last unbuilt feature and becomes what it
+actually is — a note that the model has room, and what to do if the room is ever needed.
 
-Deferred because the core comes first — there is no equity in the record today, and the definition in
-`CONTEXT.md` already accommodates it, so a total comp with no equity grants in it is simply complete.
+The design, kept because it was the right answer and costs nothing to keep: grants recorded at their
+value when made, vesting stored as **dated tranches** rather than schedule shapes — any schedule
+reduces to a list of dates and amounts, and a form with the usual presets can generate them. Vested
+tranches are Payments, which is the whole trick: nothing new has to exist for equity to be paid out.
+Total compensation for a year then includes what actually vested during it, which is the true figure
+— a refresher granted in March with a one-year cliff contributes nothing that year, where dividing
+each grant by its length would count money nobody has received.
+
+It is not in § Deliberately not building, and that distinction is the point: everything there was
+judged *wrong to build*, and this isn't wrong, it's unneeded. `CONTEXT.md` already accommodates it.
+If a grant ever lands in a real record, this is the page to reopen.
 
 ## Deliberately not building
 
@@ -720,10 +727,15 @@ cleanly as the model expects.
 
 ### After the gate
 
-Equity, and nothing else — as of 2026-08-20, with currency conversion shipped below, it is the last
-unbuilt item in this plan. The AI layer also sat in this list; it is finished, résumé bullets
+**Nothing.** This list is empty as of 2026-08-24, and the plan has no unbuilt features left in it.
+Equity was the last one standing and is no longer a to-do — § 9 now records it as room already in
+the model rather than work outstanding. The AI layer also sat here; it is finished, résumé bullets
 shipped and the other two dropped (§ 6, § Deliberately not building). So did data export, shipped
-below (§ Architecture: "exporting your data from Settings is the other half" of the backup story).
+below (§ Architecture: "exporting your data from Settings is the other half" of the backup story),
+and currency conversion.
+
+What remains anywhere in this plan is § Decide after real use and § Open questions — both of which
+want time and use, not a build.
 
 ### Shipped — data export
 
