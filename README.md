@@ -53,8 +53,6 @@ model hold together:
   an ordinary shape here, not an edge case.
 
 [`CONTEXT.md`](CONTEXT.md) defines every term precisely, each with a list of words to avoid.
-[`hyperion-plan.md`](hyperion-plan.md) is the design record: what was built, what was
-deliberately not, and why — including the arguments that were lost.
 
 ## Principles
 
@@ -154,8 +152,7 @@ CRM, campaigns, offer comparison as a separate feature, email status detection, 
 achievements, notifications of any kind, salary benchmarking, OKR frameworks, and sharing
 between Users.
 
-`hyperion-plan.md` carries the reasoning for each, and for the ones that were dropped after
-being planned.
+Each was considered and turned down on its own merits rather than left undone.
 
 ## Status
 
