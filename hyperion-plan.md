@@ -157,7 +157,10 @@ reaching for a token format that solves a problem Hyperion does not have would b
 Argon2id for hashing.
 
 **No email-based password reset.** That needs SMTP, which the app does not have and will not get. An
-Admin resets other Users' passwords; the Admin's own reset is a command run against the SQLite file.
+Admin resets other Users' passwords — built, and reachable from Settings, which also invalidates that
+User's Sessions. The Admin's own reset was to be "a command run against the SQLite file"; **that
+command was never written**, so a sole Admin who forgets their password currently has no route back
+in short of editing the database by hand. Known gap, not a decision.
 
 ## Feature set
 
@@ -508,7 +511,11 @@ is one unbroken line, on an edge case is the wrong trade regardless of how it lo
 
 - **Type is the safe choice.** Plex is coherent, licensed and bundleable, but it is not a risk. If
   the identity ever wants sharpening, this is where the room is.
-- **Login and first-run are undesigned**, deliberately — they are the last thing built.
+- ~~**Login and first-run are undesigned**, deliberately — they are the last thing built.~~
+  **Built** 2026-08-19 with auth (§ Shipped — auth, below): `LoginView`, `SetupView` (the setup
+  token) and `RegisterView` (the invite code) all exist and are routed. They were designed at the
+  keyboard rather than in `design/`, which is the honest record of how it went — none of the four
+  standalone pages covers them, and no canvas was made.
 
 ## Build order
 
@@ -1155,7 +1162,13 @@ vocabulary discipline is a stronger signal than three unrelated projects, and th
   `CONTEXT.md` § Recorded Rate already said "for one currency pair on one date… remembers the
   answer", which is the reusable option. Taking the vocabulary as the authority rather than
   reopening the question was the whole of the decision.
-- Whether the single Admin bit is enough, and whether an Admin should see that other Users exist
-  anywhere beyond the invite screen.
+- ~~Whether the single Admin bit is enough, and whether an Admin should see that other Users exist
+  anywhere beyond the invite screen.~~ **Answered by the code**, and more permissively than the
+  question imagined: Settings shows an Admin a full **Users** panel — every User by display name,
+  which of them are Admins, and a reset-password control per row — alongside the Invites panel. It
+  had to, since resetting somebody's password means naming them. The single bit has not run out: no
+  feature since has wanted a second permission. What remains genuinely open is narrower — whether a
+  second Admin can ever be made, since `isAdmin` is set at creation (true for the first User, false
+  for every invited one) and nothing anywhere flips it.
 - How résumé generation eventually renders — structured data to Markdown is easy, structured data to a
   good-looking PDF is not.

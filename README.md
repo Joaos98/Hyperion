@@ -85,11 +85,19 @@ Self-hosting should be an evening, not a project:
 docker compose up -d
 ```
 
-Then open http://localhost:8080. The first account created becomes the Admin; after that,
-registration is invite-only. One container, one process, one SQLite file — the volume is the
-whole of the deployment's state, and `cp hyperion.db` is a complete backup. Exporting your
-data from Settings is the portable half of that story: a zip of every row as JSON plus your
-documents' actual files.
+Then open http://localhost:8080. There is no account yet, and the container's logs print a
+one-time setup token to create the first one — `docker compose logs` it, open `/setup`, and enter
+the token with a display name and password. That first account is the Admin, and the setup route
+closes for good the moment it exists.
+
+After that, registration is invite-only: the Admin generates a single-use code in Settings and hands
+over the code or the `/register?code=…` link it copies. Settings also lists every account to an
+Admin, with a password reset per row — there is no email anywhere in this app, so that reset is the
+only way back in for somebody who forgets.
+
+One container, one process, one SQLite file — the volume is the whole of the deployment's state, and
+`cp hyperion.db` is a complete backup. Exporting your data from Settings is the portable half of
+that story: a zip of every row as JSON plus your documents' actual files.
 
 Keep it off the public internet. Auth here separates the people sharing a deployment from
 each other, not from the internet.
