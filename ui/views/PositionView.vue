@@ -26,9 +26,16 @@ import {
   saveUser,
   today,
 } from '../record.js'
-import CaptureBox from '../components/CaptureBox.vue'
+import LogAchievementModal from '../components/LogAchievementModal.vue'
 
 const props = defineProps<{ id: string }>()
+
+/**
+ * Capture is the same modal everywhere now (plan § Conventions). Pinned to this Position,
+ * so its chooser opens on the one being looked at — backfilling a past Position from its
+ * own page is the case this view exists for.
+ */
+const showLogModal = ref(false)
 
 const position = computed(() => record.positions.find((row) => row.id === props.id))
 const terms = computed(() =>
@@ -296,7 +303,10 @@ async function reopen(): Promise<void> {
 
       <div>
         <h3>Achievements here <span class="count">{{ achievements.length }}</span></h3>
-        <CaptureBox class="pv-capture" :position-id="position.id" :show-staleness="false" />
+
+        <div class="row-actions">
+          <button class="toggle" @click="showLogModal = true">+ Log achievement</button>
+        </div>
         <p v-if="achievements.length === 0" class="none">Nothing logged for this Position yet.</p>
         <div v-for="row in achievements" :key="row.id" class="entry">
           <p class="prose">{{ row.text }}</p>
@@ -307,6 +317,8 @@ async function reopen(): Promise<void> {
         </div>
       </div>
     </div>
+
+    <LogAchievementModal v-if="showLogModal" :default-position-id="position.id" @close="showLogModal = false" />
   </div>
 </template>
 
@@ -472,10 +484,6 @@ h3 {
 .unit {
   color: var(--faint);
   font-weight: 400;
-}
-
-.pv-capture {
-  margin-bottom: 16px;
 }
 
 .entry {

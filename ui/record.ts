@@ -124,8 +124,8 @@ export async function saveAchievement(achievement: Achievement): Promise<void> {
 export async function logAchievement(
   text: string,
   positionId: PositionId,
-  date: IsoDate = today(),
-  impact: string | null = null,
+  date: IsoDate,
+  impact: string | null,
 ): Promise<Achievement> {
   const achievement: Achievement = {
     id: mintId(),

@@ -13,7 +13,7 @@ const termsByPosition = computed(() => {
   return map
 })
 
-/** Every Position, latest-started first — past ones stay pickable, the same backfill CaptureBox's own comment describes. */
+/** Every Position, latest-started first — past ones stay pickable, so backfilling against a job you have left still works. */
 const positions = computed(() => [...(record.positions as Position[])].sort((a, b) => b.startDate.localeCompare(a.startDate)))
 
 function titleOf(position: Position): string {

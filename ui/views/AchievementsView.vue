@@ -1,11 +1,20 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { search, type Achievement } from '../../domain/index.js'
-import { deleteAchievement, record } from '../record.js'
-import CaptureBox from '../components/CaptureBox.vue'
+import { daysSinceLastAchievement, search, type Achievement, type Position } from '../../domain/index.js'
+import { deleteAchievement, record, today } from '../record.js'
+import LogAchievementModal from '../components/LogAchievementModal.vue'
 
 const query = ref('')
+
+// ── Capture (plan § Conventions: "Capture repeats on two screens") ──────────
+// The same Log-achievement card Home carries, and for the same reason: the inline box
+// could only ever log today, against the current Position, with no Impact — three fields
+// the Achievement already had and nothing here could reach. Capture is still one click.
+const showLogModal = ref(false)
+const positions = computed(() => record.positions as Position[])
+const currentPosition = computed(() => positions.value.find((position) => position.departure === null))
+const staleness = computed(() => daysSinceLastAchievement(record.achievements as Achievement[], today()))
 const results = computed(() => search(record.achievements as Achievement[], query.value))
 
 function positionName(achievement: Achievement): string | undefined {
@@ -34,7 +43,20 @@ const grouped = computed(() => {
 
 <template>
   <div class="board">
-    <CaptureBox />
+    <div class="card">
+      <div class="log-row">
+        <span class="log-label">What did you ship?</span>
+        <button class="log-btn" :disabled="positions.length === 0" @click="showLogModal = true">+ Log achievement</button>
+      </div>
+      <p v-if="positions.length === 0" class="log-none">
+        Add a <RouterLink to="/positions">Position</RouterLink> first — an Achievement needs one to belong to.
+      </p>
+      <template v-else>
+        <p v-if="staleness === undefined" class="log-stale">Nothing logged yet.</p>
+        <p v-else-if="staleness > 0" class="log-stale">Last logged <b>{{ staleness }}</b> day{{ staleness === 1 ? '' : 's' }} ago</p>
+        <p v-else class="log-stale">Logged today.</p>
+      </template>
+    </div>
 
     <div class="draft-links">
       <RouterLink to="/self-assessment" class="draft-link">Draft a self-assessment from this log →</RouterLink>
@@ -70,6 +92,8 @@ const grouped = computed(() => {
       whether that is enough stays an open question until there are months of real entries to
       answer it with.
     </p>
+
+    <LogAchievementModal v-if="showLogModal" :default-position-id="currentPosition?.id" @close="showLogModal = false" />
   </div>
 </template>
 
@@ -79,6 +103,62 @@ const grouped = computed(() => {
   flex-direction: column;
   gap: 20px;
   max-width: 68ch;
+}
+
+/* The Log-achievement card, the same shape Home's sidebar carries. */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  padding: 18px 20px;
+}
+
+.log-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.log-label {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.log-btn {
+  background: var(--selene);
+  color: var(--page);
+  border: none;
+  border-radius: var(--radius-control);
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.log-btn:disabled {
+  background: transparent;
+  color: var(--faint);
+  border: 1px solid var(--hairline);
+  cursor: default;
+}
+
+.log-stale,
+.log-none {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin: 12px 0 0;
+}
+
+.log-stale b {
+  color: var(--selene);
+  font-weight: 500;
+}
+
+.log-none a {
+  color: var(--selene);
+  text-decoration: underline;
 }
 
 .draft-links {

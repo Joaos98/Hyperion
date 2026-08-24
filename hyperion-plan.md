@@ -502,12 +502,19 @@ is one unbroken line, on an edge case is the wrong trade regardless of how it lo
 
 - **No dashboard.** Home is the Timeline. A screen summarising five things already visible is the
   personal-app feature that gets opened twice.
-- **Capture repeats on two screens** — Timeline and Achievements — but no longer identically.
-  Achievements keeps the plain inline `CaptureBox` (today, no Impact, one click). Timeline's is now
-  the Log-achievement card, which opens `LogAchievementModal` (any date, any Position, optional
-  Impact) — the sidebar spent the room a modal needs, Achievements never had it to spend. Capture
-  itself is still the one thing allowed to repeat at all, because the cost of it being one click
-  away is the whole log.
+- **Capture repeats on two screens** — Home and Achievements — **and identically again** as of
+  2026-08-24. Both are the Log-achievement card opening `LogAchievementModal` (any date, any
+  Position, optional Impact). The split that opened when the modal shipped is closed: the inline box
+  could only ever log today, against the current Position, with no Impact, and the argument for
+  keeping it — that Achievements had no room to spend on a modal — was about the sidebar's width,
+  which a modal does not take from the page it opens over. Capture is still one click on both.
+  Position detail followed the same day and `CaptureBox` is **deleted** — one capture, three call
+  sites, no second implementation to keep in step. There the button takes that page's own `.toggle`
+  styling, beside "+ Add Standing Terms" and "+ Add Payment", rather than importing the sidebar's
+  card into a detail view; the modal opens pinned to the Position being looked at, which is what
+  makes backfilling a job you have left work from its own page. The cost, named honestly: that page
+  used to log on one keystroke — type, Enter, done — and now asks for a dialog. Capture is the one
+  thing allowed to repeat at all, because the cost of it being one click away is the whole log.
 - **Suppression over partial figures.** Switch premium with one position renders as a sentence
   saying what it needs, never as `0%` or `—`. Atlas sets this precedent and it matters more here,
   where the figures are somebody's pay.
@@ -648,7 +655,8 @@ for Timeline + a secondary panel, rather than a header strip that pushes the Pil
   to the full list).
 - The Achievements page keeps its own plain inline capture box as-is — only the home page's capture
   becomes the modal-opening card. (This starts to break "Capture repeats on two screens... identically"
-  under Conventions above; revisit that line once the modal actually ships.)
+  under Conventions above; revisit that line once the modal actually ships.) **Revisited 2026-08-24
+  and reversed** — Achievements now opens the same modal, and the Conventions line above says so.
 - The Pillar itself: Positions only — Achievements no longer render there (**shipped**, below).
 
 **Shipped this session** (domain + UI, typechecked, tested, verified in-browser):
