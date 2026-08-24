@@ -113,7 +113,10 @@ Runs against `localStorage` with no server and no login. `npm test` runs the sui
 `npm run typecheck` runs `vue-tsc`.
 
 There is also a demo build — `npm run build:demo` — which seeds a fictional persona and
-opens on a login facade. It is the version to show someone.
+opens on a login facade. It is the version to show someone. It writes `dist-demo/` and is a static
+site with nothing behind it, so any static host will serve it; `vercel.json` carries the build
+command, the output directory, and the one rewrite a client-side router needs — without it a hard
+refresh on `/applications` asks the host for a file that does not exist and gets a 404.
 
 ## How the code is arranged
 
