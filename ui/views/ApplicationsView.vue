@@ -34,7 +34,9 @@ function statusOf(application: Application): Stage | undefined {
 const open = computed(() =>
   (record.applications as Application[])
     .filter((application) => isOpen(eventsByApplication.value.get(application.id) ?? []))
-    .sort((a, b) => latestDate(b) - latestDate(a)),
+    // Stalled first, then most recently moved. Quiet is what wants a decision, so it sorts
+    // to where the eye already is; within each group the ordinary recency order is unchanged.
+    .sort((a, b) => Number(stalled(b)) - Number(stalled(a)) || latestDate(b) - latestDate(a)),
 )
 const closed = computed(() =>
   (record.applications as Application[])
@@ -42,14 +44,15 @@ const closed = computed(() =>
     .sort((a, b) => latestDate(b) - latestDate(a)),
 )
 
-// ── Stall detection and the attention view (CONTEXT.md § Stalled) ──────────
-// Drawn from the Open set, and only the Open set — a Terminal Application has nothing left
-// to have gone quiet. Reported as a queue to look at, not an accusation: silence is normal
-// in a job search, and the threshold is a per-User setting, tuned against real experience.
+// ── Stall detection (CONTEXT.md § Stalled) ─────────────────────────────────
+// Only the Open set can go quiet — a Terminal Application has nothing left to have gone
+// silent on. There is no separate attention section any more: a Stalled Application sorts
+// to the top of Open and carries a "quiet Nd" chip there, which says the same thing without
+// listing the same row twice. Reported as a queue to look at, not an accusation.
 const stallThresholdDays = computed(() => record.user?.stallThresholdDays ?? 21)
-const needsAttention = computed(() =>
-  open.value.filter((application) => isStalled(eventsByApplication.value.get(application.id) ?? [], today(), stallThresholdDays.value)),
-)
+function stalled(application: Application): boolean {
+  return isStalled(eventsByApplication.value.get(application.id) ?? [], today(), stallThresholdDays.value)
+}
 
 // ── The funnel, response rates and time-to-response (CONTEXT.md § Funnel, § Response) ──
 const funnel = computed(() => funnelCounts(record.applications as Application[], eventsByApplication.value))
@@ -244,20 +247,6 @@ onMounted(() => {
         </div>
       </section>
 
-      <section v-if="needsAttention.length > 0" class="attention">
-        <h3>Needs attention <span class="count">{{ needsAttention.length }}</span></h3>
-        <RouterLink v-for="application in needsAttention" :key="application.id" :to="`/applications/${application.id}`" class="row">
-          <div class="l">
-            {{ application.title }} <span class="co">· {{ application.company }}</span>
-            <small>{{ application.source }}</small>
-          </div>
-          <div class="r">
-            <span class="chip" :class="chipClass(statusOf(application))">{{ statusOf(application)?.toUpperCase() }}</span>
-            <span class="stalled">quiet {{ daysAgo(application) }}d</span>
-          </div>
-        </RouterLink>
-      </section>
-
       <section v-if="open.length > 0">
         <h3>Open <span class="count">{{ open.length }}</span></h3>
         <RouterLink v-for="application in open" :key="application.id" :to="`/applications/${application.id}`" class="row">
@@ -267,7 +256,8 @@ onMounted(() => {
           </div>
           <div class="r">
             <span class="chip" :class="chipClass(statusOf(application))">{{ statusOf(application)?.toUpperCase() }}</span>
-            <span v-if="daysAgo(application) !== undefined" class="ago">{{ daysAgo(application) }}d ago</span>
+            <span v-if="stalled(application)" class="stalled">quiet {{ daysAgo(application) }}d</span>
+            <span v-else-if="daysAgo(application) !== undefined" class="ago">{{ daysAgo(application) }}d ago</span>
           </div>
         </RouterLink>
       </section>
@@ -541,23 +531,11 @@ h3 {
   font-weight: 600;
 }
 
-.attention {
-  background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-card);
-  padding: 4px 14px;
-  margin-bottom: 28px;
-}
-
-.attention h3 {
-  margin-top: 10px;
-}
-
 .stalled {
   font-family: var(--mono);
   font-size: 10.5px;
-  color: var(--muted);
-  border: 1px solid var(--hairline);
+  color: var(--quiet);
+  border: 1px solid color-mix(in srgb, var(--quiet) 35%, transparent);
   border-radius: 4px;
   padding: 2px 7px;
   white-space: nowrap;

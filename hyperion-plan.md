@@ -1092,6 +1092,34 @@ Two calls worth recording:
 Where a rate is missing the view falls back to a lane per currency — honest, just not yet one shape —
 and asks for the one rate that would join them.
 
+### Shipped — the staleness signal moves to Home, and the attention section goes
+
+2026-08-24. The Needs-attention section shipped a callout on the page you only open *because* you
+were already thinking about applications — which is the one audience that does not need telling.
+CONTEXT.md § Stalled had already written the rule the section was failing: "being visible when you
+open the app is the whole mechanism." Home is the page you open. So the signal moved there.
+
+**On Home**, the Applications card sorts Stalled to the top and its foot gains a count — "2 total ·
+1 quiet". The count, not the rows, is what carries it: the card shows three, and a signal that can be
+pushed off the bottom by a fourth quiet Application is not a signal. Home points, `/applications`
+lists.
+
+**On `/applications`**, the Needs-attention section is gone entirely. It listed rows that were
+already in Open directly beneath it, which is where the duplication had been defended as "attention is
+a callout, not a replacement" — true, and still not worth showing the same Application twice. Open
+itself now sorts Stalled first, then by recency as before, and a Stalled row carries the `quiet 66d`
+chip in place of its ordinary `19d ago`.
+
+**The chip took a colour**, which reopens the neutrality call made when stall detection first shipped
+(no warning colour, no alarm iconography). New token `--quiet: #c0a878`, an amber held at `--fall`'s
+own saturation — warm enough to find in a list, and nowhere near a warning. The dedicated section was
+the louder of the two designs; losing it is what bought the chip the room to be tinted at all.
+
+Rejected on the way: a fourth sidebar card (breaks "every card carries its own empty state", and a
+card that appears and vanishes makes the sidebar jump), and rendering silence as gaps in the Pillar —
+the Pillar is Positions only, and a signal measured in days does not belong in a structure measured in
+years.
+
 ### When a search starts
 
 Rounds, prior-application awareness, stall detection, the funnel and response rates are all shipped,

@@ -22,6 +22,11 @@
   --fall: #c08a8a;
   --held: #333949;
 
+  /* Silence, not alarm — the one signal that asks for a move. Kept at --fall's own
+     saturation deliberately: CONTEXT.md § Stalled says a Stalled Application is reported
+     neutrally, so this warms a chip enough to be found and stops well short of a warning. */
+  --quiet: #c0a878;
+
   --radius-card: 12px;
   --radius-control: 8px;
   --gap: 16px;

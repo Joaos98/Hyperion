@@ -8,6 +8,7 @@ import {
   foldTimeline,
   isCurrent,
   isOpen,
+  isStalled,
   perMonth,
   positionSpans,
   status,
@@ -106,11 +107,21 @@ function latestEventDate(application: Application): number {
   return dates.length === 0 ? 0 : Math.max(...dates)
 }
 
+// Stalled first (CONTEXT.md § Stalled: "being visible when you open the app is the whole
+// mechanism" — this is the page you open, so this is where that has to be true), then the
+// ordinary recency order. Three rows can't be the signal on their own, so the count in the
+// foot carries it: the card points, /applications lists.
+const stallThresholdDays = computed(() => record.user?.stallThresholdDays ?? 21)
+function stalled(application: Application): boolean {
+  return isStalled(eventsByApplication.value.get(application.id) ?? [], today(), stallThresholdDays.value)
+}
+
 const openApplications = computed(() =>
   applications.value
     .filter((application) => isOpen(eventsByApplication.value.get(application.id) ?? []))
-    .sort((a, b) => latestEventDate(b) - latestEventDate(a)),
+    .sort((a, b) => Number(stalled(b)) - Number(stalled(a)) || latestEventDate(b) - latestEventDate(a)),
 )
+const quietCount = computed(() => openApplications.value.filter(stalled).length)
 const latestApplications = computed(() => openApplications.value.slice(0, 3))
 
 function daysAgo(application: Application): number | undefined {
@@ -352,12 +363,15 @@ function deltaPercent(event: StandingTermsEvent): number | undefined {
                 </div>
                 <div class="app-r">
                   <span class="chip" :class="chipClass(statusOf(application))">{{ statusOf(application)?.toUpperCase() }}</span>
-                  <span v-if="daysAgo(application) !== undefined" class="ago">{{ daysAgo(application) }}d ago</span>
+                  <span v-if="stalled(application)" class="stalled">quiet {{ daysAgo(application) }}d</span>
+                  <span v-else-if="daysAgo(application) !== undefined" class="ago">{{ daysAgo(application) }}d ago</span>
                 </div>
               </div>
             </div>
             <div class="app-foot">
-              <span class="count">{{ applications.length }} total</span>
+              <span class="count">
+                {{ applications.length }} total<template v-if="quietCount > 0"> · <span class="quiet">{{ quietCount }} quiet</span></template>
+              </span>
               <RouterLink to="/applications">View all &rarr;</RouterLink>
             </div>
           </template>
@@ -806,6 +820,20 @@ function deltaPercent(event: StandingTermsEvent): number | undefined {
   font-family: var(--mono);
   font-size: 11px;
   color: var(--faint);
+}
+
+.app-foot .quiet {
+  color: var(--quiet);
+}
+
+.stalled {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--quiet);
+  border: 1px solid color-mix(in srgb, var(--quiet) 35%, transparent);
+  border-radius: 4px;
+  padding: 2px 7px;
+  white-space: nowrap;
 }
 
 .app-foot a {
