@@ -31,7 +31,7 @@ import LogAchievementModal from '../components/LogAchievementModal.vue'
 const props = defineProps<{ id: string }>()
 
 /**
- * Capture is the same modal everywhere now (plan § Conventions). Pinned to this Position,
+ * Capture is the same modal everywhere now. Pinned to this Position,
  * so its chooser opens on the one being looked at — backfilling a past Position from its
  * own page is the case this view exists for.
  */
@@ -391,9 +391,8 @@ h2 {
   border-color: var(--selene);
 }
 
-/* Ending a Position is a departure, the same event the Timeline itself marks in --fall
-   (design/compression.html § the rule) — reusing that jurisdiction here rather than
-   inventing a second meaning for the colour. */
+/* Ending a Position is a departure, the same event the Timeline itself marks in --fall —
+   reusing that jurisdiction here rather than inventing a second meaning for the colour. */
 .btn.end:hover {
   color: var(--fall);
   border-color: var(--fall);

@@ -1,8 +1,7 @@
 /**
  * A minimal ZIP reader and writer, no external dependency. `buildZip` writes stored
- * (uncompressed) entries only — the whole-app export (hyperion-plan.md § The application
- * record) is career-record JSON plus a handful of résumé-sized files, not worth implementing
- * DEFLATE for. `readZip` reads both: an archive re-saved by an ordinary zip tool (someone
+ * (uncompressed) entries only — the whole-app export is career-record JSON plus a handful of
+ * résumé-sized files, not worth implementing DEFLATE for. `readZip` reads both: an archive re-saved by an ordinary zip tool (someone
  * extracting an export to look at it, then re-zipping it) is likely DEFLATE-compressed, and
  * the browser's own Compression Streams API decodes that without needing a hand-rolled
  * inflate — no dependency added, just a platform API this codebase hadn't reached for yet.

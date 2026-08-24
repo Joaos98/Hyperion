@@ -22,7 +22,7 @@ async function start(): Promise<void> {
       await router.replace(setupOpen ? '/setup' : '/login')
     }
   } else if (isDemoMode()) {
-    // The published demo: a login facade first (plan § Architecture), remembered per
+    // The published demo: a login facade first, remembered per
     // browser so a returning visitor's own edits aren't re-seeded over or hidden behind
     // the facade a second time.
     if (window.localStorage.getItem(DEMO_ENTERED_KEY)) {

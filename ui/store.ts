@@ -15,8 +15,8 @@ export function isServerBuild(): boolean {
 /**
  * Whether this is the published demo build (`vite build --mode demo`) rather than plain
  * local development (`npm run dev`, no `--mode`) — both share `LocalStorageStore` and
- * `DEMO_USER_ID` below, but only the demo shows the login facade (plan § Architecture:
- * "the demo opens on the login screen... a facade"). Vite already sets `MODE` from the
+ * `DEMO_USER_ID` below, but only the demo shows the login facade: it opens on a login
+ * screen that is a facade over the same storage. Vite already sets `MODE` from the
  * `--mode` flag; no env file needed the way `isServerBuild` needs `.env.server`.
  */
 export function isDemoMode(): boolean {
@@ -24,8 +24,8 @@ export function isDemoMode(): boolean {
 }
 
 /**
- * The self-hosted build talks to its own server, behind a real login (plan § Users and
- * access); the demo, and local development before a server exists, keep the record in the
+ * The self-hosted build talks to its own server, behind a real login; the demo, and local
+ * development before a server exists, keep the record in the
  * browser and need nothing running behind them — real auth included, since that's a
  * self-hosted-server concern only. The demo build's own login screen (`isDemoMode` above)
  * is a facade over this same storage, not a second auth system.

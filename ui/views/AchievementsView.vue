@@ -7,7 +7,7 @@ import LogAchievementModal from '../components/LogAchievementModal.vue'
 
 const query = ref('')
 
-// ── Capture (plan § Conventions: "Capture repeats on two screens") ──────────
+// ── Capture: the one thing allowed to repeat on two screens ────────────────
 // The same modal Home opens, for the same reason: the inline box could only ever log
 // today, against the current Position, with no Impact — three fields the Achievement
 // already had and nothing here could reach. Capture is still one click.

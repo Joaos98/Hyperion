@@ -6,10 +6,10 @@ import { SqliteStore } from '../storage/sqlite-store.js'
 import { hashPassword } from './auth.js'
 
 /**
- * The break-glass password reset, run against the SQLite file (plan § Users and access:
- * "An Admin resets other Users' passwords; the Admin's own reset is a command run against
- * the SQLite file"). Hyperion has no SMTP and never will, so a sole Admin who forgets
- * their password has no route back in through the app itself — this is that route.
+ * The break-glass password reset, run against the SQLite file. An Admin resets other
+ * Users' passwords from Settings; this is the one for the Admin themselves. Hyperion has
+ * no SMTP and never will, so a sole Admin who forgets their password has no route back in
+ * through the app itself — this is that route.
  *
  * Deliberately not restricted to Admins: whoever can run this already holds the database
  * file, and every record in it. A permission check here would protect nothing and would

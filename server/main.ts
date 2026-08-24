@@ -22,8 +22,8 @@ db.pragma('journal_mode = WAL')
 const store = new SqliteStore(db)
 
 /**
- * Closes for good the moment the first User exists (plan § Users and access: "the
- * first-run window closes with a setup token"). Held only in memory — reprinted on every
+ * Closes for good the moment the first User exists — the first-run window is held open by
+ * this token and nothing else. Held only in memory: reprinted on every
  * restart before an Admin exists, and irrelevant after: `/api/setup` refuses outright once
  * any User is stored, whatever token it is given.
  */

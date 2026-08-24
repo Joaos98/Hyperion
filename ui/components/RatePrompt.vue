@@ -5,7 +5,7 @@ import { currentUserId, saveRecordedRate } from '../record.js'
 
 /**
  * The one place Hyperion asks for an exchange rate: beside a comparison that cannot be
- * answered without it, naming the pair and the date it needs (plan § 8). Nothing here
+ * answered without it, naming the pair and the date it needs. Nothing here
  * fetches, suggests or defaults a rate — an empty field is the honest starting state,
  * and what goes in it is the User's own claim about a day.
  *

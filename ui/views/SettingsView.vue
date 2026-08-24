@@ -78,7 +78,7 @@ async function saveDisplayCurrency(): Promise<void> {
 }
 
 // ── AI Setup: base URL, model and key together, visible but inactive until all three are
-// set (plan § AI is additive). A key alone no longer says where to send it or which model
+// set — AI is additive, never load-bearing. A key alone no longer says where to send it
 // to ask for. Lives here rather than on each AI view, since a second AI view (résumé
 // bullets) made the duplicated panel worse than one shared home. ──
 const isAiSetUp = computed(() => !!(record.user?.aiBaseUrl && record.user?.aiApiKey && record.user?.aiModel))

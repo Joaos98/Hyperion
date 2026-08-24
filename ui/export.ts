@@ -31,8 +31,7 @@ export interface ExportedRecord {
 /**
  * Everything Hyperion holds for the signed-in User, as one zip: `data.json` (every row,
  * Documents' metadata included) plus each Document's actual bytes under `documents/` — the
- * whole-app export the backup story promises alongside `cp hyperion.db` (hyperion-plan.md §
- * The application record: "the whole-app export becomes a zip of JSON plus files"). Reads
+ * whole-app export the backup story promises alongside `cp hyperion.db`. Reads
  * only through `record.ts`'s own state and `readDocumentBytes`, so it runs identically
  * whichever storage adapter is behind it.
  */

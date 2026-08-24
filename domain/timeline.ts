@@ -6,7 +6,7 @@ import type { Departure, Payment, Position, StandingTerms } from './types.js'
  * One Position's run on the Timeline (CONTEXT.md § Timeline). `end` absent means still
  * running. `alongside` is true when this Position started while an earlier-started
  * Position was still open — contract work beside a salaried job, the one case the Pillar
- * does not draw on its own spine (design/compression.html § the inset).
+ * does not draw on its own spine.
  */
 export interface Span {
   position: Position
@@ -120,9 +120,9 @@ export interface FoldedGap {
 export type TimelineRow = { kind: 'event'; event: TimelineEvent } | FoldedGap
 
 /**
- * Events with the quiet stretches between them collapsed once they exceed `thresholdDays`
- * (design/compression.html § the rule). The rule is not a ruler: everything here is
- * either an exact mark or an explicitly labelled Fold, never silently compressed.
+ * Events with the quiet stretches between them collapsed once they exceed `thresholdDays`.
+ * The rule is not a ruler: everything here is either an exact mark or an explicitly
+ * labelled Fold, never silently compressed.
  */
 export function foldTimeline(
   events: readonly TimelineEvent[],

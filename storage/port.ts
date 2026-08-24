@@ -33,8 +33,7 @@ export class StorageError extends Error {
  * One User's whole record: every Position they hold or held, every Standing Terms and
  * Payment across all of them, every Achievement, every Application and its Events, and
  * every Document's metadata. What `domain/` is handed once it has been scoped to one User
- * — the domain layer never sees a `userId` at all (plan § Architecture: identity lives at
- * the boundary).
+ * — the domain layer never sees a `userId` at all: identity lives at the boundary.
  *
  * `documents` carries metadata only, never bytes (CONTEXT.md § Document): the record
  * stays cheap to load regardless of how many résumé versions, or how large, sit behind

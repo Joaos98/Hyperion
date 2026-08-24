@@ -139,7 +139,7 @@ function chipClass(stage: Stage | undefined): string {
 /**
  * Whether the rule is thick and whose colour it takes at `date`: `current` for a Position
  * still open (the gradient down to Selene), `held` for one that has ended (a flat grey),
- * `none` where nothing was held (design/compression.html § the rule is not a ruler).
+ * `none` where nothing was held.
  */
 function railState(date: string): 'current' | 'held' | 'none' {
   const covering = spans.value.find(

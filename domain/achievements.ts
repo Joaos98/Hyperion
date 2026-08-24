@@ -32,8 +32,8 @@ export function achievementsSince(achievements: readonly Achievement[], since: I
 }
 
 /**
- * Days since the most recent Achievement, for the passive staleness signal (design/plan
- * § capture is a design constraint). `undefined` with nothing logged yet — day one is not
+ * Days since the most recent Achievement, for the passive staleness signal — capture being
+ * one click away is a design constraint. `undefined` with nothing logged yet — day one is not
  * a large number of days, it is the absence of one.
  */
 export function daysSinceLastAchievement(

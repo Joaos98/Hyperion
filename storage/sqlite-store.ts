@@ -36,7 +36,7 @@ import { StorageError, type HyperionStore, type UserRecord } from './port.js'
  * A signed-in browser (CONTEXT.md has no glossary entry for this — it is pure mechanism,
  * not something a User ever names or thinks about, unlike Invite). Lives only in
  * `SqliteStore`, never in `domain/` or in anything sent to the client beyond the cookie
- * itself: identity lives at the boundary (plan § Architecture).
+ * itself: identity lives at the boundary.
  */
 export interface Session {
   token: string
@@ -168,9 +168,8 @@ const migrations: ((db: Database) => void)[] = [
   },
 
   /**
-   * 3 — auth (plan § Users and access): a password hash on `users` itself, not a separate
-   * table (`hyperion-plan.md`'s own "Ten tables" list has no `credentials`); Sessions and
-   * Invites as their own tables, both scoped to the User who owns them.
+   * 3 — auth: a password hash on `users` itself rather than a `credentials` table of its
+   * own; Sessions and Invites as their own tables, both scoped to the User who owns them.
    */
   (db) => {
     db.exec(`
@@ -725,7 +724,7 @@ export class SqliteStore implements HyperionStore {
     if (result.changes === 0) throw new StorageError(`no User "${user.id}" is stored`)
   }
 
-  // ── auth (plan § Users and access) ───────────────────────────────────────
+  // ── auth ─────────────────────────────────────────────────────────────────
 
   /** Whether any User exists yet — closes the first-run setup window for good. */
   async hasAnyUser(): Promise<boolean> {

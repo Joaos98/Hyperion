@@ -5,14 +5,14 @@ const EUR: Currency = { code: 'EUR', symbol: '€', decimals: 2 }
 const USD: Currency = { code: 'USD', symbol: '$', decimals: 2 }
 
 /**
- * A fictional career in a foreign currency, deliberately not the real user's own (plan §
- * Architecture: "The demo is a fictional persona in a foreign market"). `contract` stands
+ * A fictional career in a foreign currency, deliberately not the real user's own — the demo
+ * is a fictional persona in a foreign market. `contract` stands
  * in for Employment Type throughout — `clt`/`pj` are Brazil-specific and would read as a
  * visible error next to a European company (CONTEXT.md § Employment Type).
  *
  * The career **crosses a currency** on purpose: the first Position pays in USD and every
- * one after it in EUR. Without a crossing somewhere, currency conversion — the whole of
- * plan § 8 — is invisible in the published demo, and it is the least ordinary thing the
+ * one after it in EUR. Without a crossing somewhere, currency conversion is invisible in
+ * the published demo, and it is the least ordinary thing the
  * app does. One crossing out of two job changes is what puts every state of that feature
  * on screen at once: the average Switch Premium still computes, from the EUR→EUR change,
  * and says how many switches it had to leave out; the USD→EUR change below it carries the

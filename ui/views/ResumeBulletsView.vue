@@ -5,7 +5,7 @@ import { achievementsSince, buildResumeBulletsPrompt, type Achievement, type Sel
 import { AiError, askAi } from '../ai.js'
 import { record, today } from '../record.js'
 
-/** Set once, from Settings — every AI feature reads the same three fields from there (plan § AI is additive). */
+/** Set once, from Settings — every AI feature reads the same three fields from there. */
 const isSetUp = computed(() => !!(record.user?.aiBaseUrl && record.user?.aiApiKey && record.user?.aiModel))
 
 // ── which entries feed the bullets ───────────────────────────────────────

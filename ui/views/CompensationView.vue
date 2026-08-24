@@ -75,8 +75,7 @@ const avgStay = computed(() => averageStayPremiumPercent(positions.value, termsB
 /**
  * Every job change, newest first. A switch across a currency boundary is not dropped
  * from this list for want of a rate — it is exactly where the rate gets asked for, since
- * nowhere else in Hyperion knows which pair and which date a comparison needed
- * (plan § 8).
+ * nowhere else in Hyperion knows which pair and which date a comparison needed.
  */
 const switches = computed(() =>
   display.value ? switchPremiums(positions.value, termsByPosition.value, display.value, rates.value).reverse() : [],
@@ -92,7 +91,7 @@ const awaitingRate = computed(() => switches.value.filter((entry) => entry.premi
  * A panel per currency rather than one shared vertical scale, because two currencies have
  * no common height — R$300,000 drawn beside $120,000 would read as two-and-a-half times
  * something, and the rate that would make them comparable belongs to the comparisons
- * below, not to a record of what each job paid (plan § 8). Time is shared across panels,
+ * below, not to a record of what each job paid. Time is shared across panels,
  * so a reader still sees when one currency gave way to the next.
  */
 const CHART = {

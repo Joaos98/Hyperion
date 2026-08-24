@@ -14,9 +14,8 @@ export interface SelfAssessmentEntry {
 }
 
 /**
- * The prompt for a self-assessment draft (plan § Self-assessment draft): turns a
- * stretch of the achievement log into a first-person write-up a User could hand to a
- * manager. Pure string construction, no I/O — the network call itself is a `ui/`
+ * The prompt for a self-assessment draft: turns a stretch of the achievement log into a
+ * first-person write-up a User could hand to a manager. Pure string construction, no I/O — the network call itself is a `ui/`
  * concern, exactly as calling a storage adapter is.
  *
  * Two things this is careful to say, because Hyperion is a record and not an advisor

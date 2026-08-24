@@ -2,9 +2,8 @@ import { DomainError } from './errors.js'
 import type { SelfAssessmentEntry } from './self-assessment.js'
 
 /**
- * The prompt for résumé bullets (plan § The rest of the AI layer: "Achievements → résumé
- * bullets") — the same log slice `buildSelfAssessmentPrompt` reads, turned into short,
- * résumé-ready lines instead of prose. A Suggestion (CONTEXT.md § Suggestion): drafted,
+ * The prompt for résumé bullets — the same log slice `buildSelfAssessmentPrompt` reads, turned
+ * into short, résumé-ready lines instead of prose. A Suggestion (CONTEXT.md § Suggestion): drafted,
  * never applied — the person copies, edits or discards each line themselves.
  */
 export function buildResumeBulletsPrompt(entries: readonly SelfAssessmentEntry[]): string {

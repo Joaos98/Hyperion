@@ -37,7 +37,7 @@ import {
  * `store: HyperionStore` is what every record-CRUD route uses, kept behind the port's own
  * abstraction. `auth: SqliteStore` is the same instance, typed concretely, for the
  * session/invite/credential methods only `SqliteStore` has — auth only ever runs against
- * the self-hosted SQLite deployment (plan § Users and access), so a second port interface
+ * the self-hosted SQLite deployment, so a second port interface
  * nobody else would implement was not worth inventing.
  */
 export interface Deployment {
@@ -256,7 +256,7 @@ async function route(
     // sending their id, or make themselves an Admin by sending their own back with the bit
     // flipped. Both come from the server's side instead: the id from the Session, and
     // `isAdmin` from what is already stored. Nothing grants the Admin bit over HTTP — the
-    // first User gets it at setup (plan § Users and access) and no route changes it after.
+    // first User gets it at setup and no route changes it after.
     const existing = await store.loadUserRecord(userId)
     if (!existing) return send(response, 401, { error: 'Sign in first' })
     const sent = await asked<User>(request, 'user')

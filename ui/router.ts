@@ -18,12 +18,11 @@ import { record } from './record.js'
 import { DEMO_ENTERED_KEY, isDemoMode, isServerBuild } from './store.js'
 
 /**
- * Home renders `TimelineView.vue` — the Timeline pillar plus the sidebar cards (design/
- * views.html § what these settle) — but is named `home`, not `timeline`, since it is no
- * longer only the Timeline. There is still no separate dashboard: the application record's
- * own analytics (funnel, response rates, stall detection, the attention view — plan §
- * When a search starts, all shipped) live on `ApplicationsView.vue` instead of a route of
- * their own, the same reasoning that kept Home from becoming one either.
+ * Home renders `TimelineView.vue` — the Timeline pillar plus the sidebar cards — but is named
+ * `home`, not `timeline`, since it is no longer only the Timeline. There is still no separate
+ * dashboard: the application record's own analytics (funnel, response rates, stall detection,
+ * the attention view, all shipped) live on `ApplicationsView.vue` instead of a route of their
+ * own, the same reasoning that kept Home from becoming one either.
  *
  * `login` / `setup` / `register` are the only routes reachable without a Session in the
  * server build (`ui/main.ts`'s bootstrap, and the guard below); `demo-login` is the same

@@ -3,14 +3,14 @@ import { hash, verify } from '@node-rs/argon2'
 
 /**
  * How long a Session lasts from creation, fixed rather than sliding — simple, and fine for
- * a personal or small-shared deployment (plan § Users and access: sessions in a cookie).
+ * a personal or small-shared deployment, where the Session lives in a cookie.
  */
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
 
 const COOKIE_NAME = 'hyperion_session'
 
 /**
- * A password, hashed with Argon2id (plan § Users and access) — `@node-rs/argon2`'s own
+ * A password, hashed with Argon2id — `@node-rs/argon2`'s own
  * default algorithm when `options` is omitted, so nothing here names it explicitly (the
  * enum it lives on is a `const enum`, which `verbatimModuleSyntax` refuses to import for
  * its numeric value alone). Never store the plain text anywhere else.

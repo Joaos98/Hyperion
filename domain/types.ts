@@ -70,11 +70,11 @@ export interface User {
    * keeps reading in the units they most likely still think and spend in. Setting it is
    * an override, offered in Settings and required nowhere — the alternative, asking at
    * sign-up, would put the question at the one moment there is no record to answer it
-   * against (plan § 8: "no table to fill in upfront").
+   * against — there is no table to fill in upfront.
    */
   displayCurrency: Currency | null
   /**
-   * This User's own AI setup (plan § AI is additive, never load-bearing) — a base URL, a
+   * This User's own AI setup, additive and never load-bearing — a base URL, a
    * key and a model, all `null` until they configure one. Every AI feature stays visible
    * but inactive until all three are set, and nothing is ever sent anywhere on this User's
    * behalf until then.
@@ -229,9 +229,8 @@ export interface Application {
   /** Which Document, if any, was sent with this Application. */
   documentId: DocumentId | null
   /**
-   * Unused until there is a corpus of Applications to check a new one against
-   * (plan § When a search starts). The column exists now because it is migration-hostile
-   * later and free today.
+   * Unused until there is a corpus of Applications to check a new one against. The column
+   * exists now because it is migration-hostile later and free today.
    */
   priorApplicationId: ApplicationId | null
 }
