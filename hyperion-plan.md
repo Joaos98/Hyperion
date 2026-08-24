@@ -1127,6 +1127,27 @@ card that appears and vanishes makes the sidebar jump), and rendering silence as
 the Pillar is Positions only, and a signal measured in days does not belong in a structure measured in
 years.
 
+### Fixed — `PUT /api/user` took the caller's word for who they were
+
+2026-08-24, found while reconciling these docs against the code. The route wrote whatever User
+object the body carried: `store.writeUser(await asked(request, 'user'))`, with no check that its
+`id` was the Session's. `writeUser` keys its update on `user.id` and writes `is_admin` straight
+from the object, so a signed-in non-Admin could send their own User back with `isAdmin: true` and
+have it — invites, the full Users list, and resetting anybody's password — or name somebody else's
+id and overwrite their row instead.
+
+Only the settings come from the body now; the id comes from the Session and `isAdmin` from what is
+already stored. **No route grants the Admin bit** — the first User gets it at setup and nothing
+changes it afterwards, which is a rule the code now actually keeps rather than one it happened not
+to be asked to break.
+
+This was reachable only in the self-hosted build, and only by somebody already holding an account.
+That is exactly the boundary invite-only exists to draw (§ Users and access: "invite-only means that
+deployment fails safe"), so it undid the guarantee between people sharing one deployment, not the
+one against the open internet. Three tests in `server/server.test.ts` cover it — an ordinary
+settings save still lands, the bit is refused, and a body naming another id writes the sender's own
+row — and all three were confirmed to fail against the old handler before the fix went in.
+
 ### When a search starts
 
 Rounds, prior-application awareness, stall detection, the funnel and response rates are all shipped,

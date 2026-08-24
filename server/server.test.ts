@@ -49,6 +49,17 @@ async function openServer(): Promise<{ base: string; store: SqliteStore }> {
   return { base, store }
 }
 
+/** A second, non-Admin User brought in the only way there is — an Invite the Admin generated. */
+async function secondUser(base: string, adminCookie: string): Promise<string> {
+  const invited = await fetch(`${base}/api/invites`, authed(adminCookie, { method: 'POST' }))
+  const { invite } = (await invited.json()) as { invite: { code: string } }
+  const response = await fetch(`${base}/api/register`, {
+    method: 'POST',
+    body: JSON.stringify({ code: invite.code, displayName: 'Ana', password: PASSWORD }),
+  })
+  return response.headers.get('set-cookie')!.split(';')[0]!
+}
+
 /** `Cookie` attached, so the request rides `cookie`'s Session — Node's `fetch` carries no cookie jar of its own. */
 function authed(cookie: string, init: RequestInit = {}): RequestInit {
   return { ...init, headers: { ...init.headers, cookie } }
@@ -282,16 +293,6 @@ describe('writes cannot claim another User\'s id', () => {
 })
 
 describe('admin routes', () => {
-  async function secondUser(base: string, adminCookie: string): Promise<string> {
-    const invited = await fetch(`${base}/api/invites`, authed(adminCookie, { method: 'POST' }))
-    const { invite } = (await invited.json()) as { invite: { code: string } }
-    const response = await fetch(`${base}/api/register`, {
-      method: 'POST',
-      body: JSON.stringify({ code: invite.code, displayName: 'Ana', password: PASSWORD }),
-    })
-    return response.headers.get('set-cookie')!.split(';')[0]!
-  }
-
   it('creates and lists Invites', async () => {
     const { base, cookie } = await seededServer()
     await fetch(`${base}/api/invites`, authed(cookie, { method: 'POST' }))
@@ -329,6 +330,54 @@ describe('admin routes', () => {
     expect((await fetch(`${base}/api/invites`, authed(otherCookie, { method: 'POST' }))).status).toBe(403)
     expect((await fetch(`${base}/api/invites`, authed(otherCookie))).status).toBe(403)
     expect((await fetch(`${base}/api/users`, authed(otherCookie))).status).toBe(403)
+  })
+})
+
+describe('writing your own settings', () => {
+  async function userBehind(base: string, cookie: string): Promise<User> {
+    const response = await fetch(`${base}/api/record`, authed(cookie))
+    const { record } = (await response.json()) as { record: { user: User } }
+    return record.user
+  }
+
+  it('saves what the settings page changes', async () => {
+    const { base, cookie } = await seededServer()
+    const mine = await userBehind(base, cookie)
+    const put = await fetch(`${base}/api/user`, authed(cookie, { method: 'PUT', body: JSON.stringify({ user: { ...mine, stallThresholdDays: 30 } }) }))
+    expect(put.status).toBe(204)
+    expect((await userBehind(base, cookie)).stallThresholdDays).toBe(30)
+  })
+
+  it('will not grant the Admin bit to whoever asks for it', async () => {
+    const { base, cookie } = await seededServer()
+    const otherCookie = await secondUser(base, cookie)
+    const ana = await userBehind(base, otherCookie)
+    expect(ana.isAdmin).toBe(false)
+
+    const put = await fetch(`${base}/api/user`, authed(otherCookie, { method: 'PUT', body: JSON.stringify({ user: { ...ana, isAdmin: true } }) }))
+    expect(put.status).toBe(204)
+
+    // The write landed, and the bit did not come with it.
+    expect((await userBehind(base, otherCookie)).isAdmin).toBe(false)
+    expect((await fetch(`${base}/api/users`, authed(otherCookie))).status).toBe(403)
+  })
+
+  it('writes the User behind the Session, not whichever id the body names', async () => {
+    const { base, cookie } = await seededServer()
+    const otherCookie = await secondUser(base, cookie)
+    const admin = await userBehind(base, cookie)
+
+    // Ana sends the Admin's own row back, renamed. It is her settings that move, not theirs.
+    const put = await fetch(`${base}/api/user`, authed(otherCookie, { method: 'PUT', body: JSON.stringify({ user: { ...admin, displayName: 'Taken', foldThresholdDays: 7 } }) }))
+    expect(put.status).toBe(204)
+
+    const stillAdmin = await userBehind(base, cookie)
+    expect(stillAdmin.displayName).toBe(USER.displayName)
+    expect(stillAdmin.foldThresholdDays).toBe(USER.foldThresholdDays)
+
+    const ana = await userBehind(base, otherCookie)
+    expect(ana.foldThresholdDays).toBe(7)
+    expect(ana.isAdmin).toBe(false)
   })
 })
 

@@ -250,7 +250,17 @@ async function route(
   }
 
   if (at[0] === 'user' && at.length === 1 && method === 'PUT') {
-    await store.writeUser(await asked(request, 'user'))
+    // The body describes the settings, never who is being written or what they may do.
+    // `writeUser` keys on `user.id` and writes `is_admin` from the object it is given, so
+    // taking either from the request let a signed-in User overwrite somebody else's row by
+    // sending their id, or make themselves an Admin by sending their own back with the bit
+    // flipped. Both come from the server's side instead: the id from the Session, and
+    // `isAdmin` from what is already stored. Nothing grants the Admin bit over HTTP — the
+    // first User gets it at setup (plan § Users and access) and no route changes it after.
+    const existing = await store.loadUserRecord(userId)
+    if (!existing) return send(response, 401, { error: 'Sign in first' })
+    const sent = await asked<User>(request, 'user')
+    await store.writeUser({ ...sent, id: userId, isAdmin: existing.user.isAdmin })
     return send(response, 204)
   }
 
