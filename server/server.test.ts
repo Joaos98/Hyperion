@@ -381,6 +381,62 @@ describe('writing your own settings', () => {
   })
 })
 
+describe('renaming yourself', () => {
+  async function userBehind(base: string, cookie: string): Promise<User> {
+    const response = await fetch(`${base}/api/record`, authed(cookie))
+    const { record } = (await response.json()) as { record: { user: User } }
+    return record.user
+  }
+
+  function put(base: string, cookie: string, user: User): Promise<Response> {
+    return fetch(`${base}/api/user`, authed(cookie, { method: 'PUT', body: JSON.stringify({ user }) }))
+  }
+
+  it('changes the name you sign in with', async () => {
+    const { base, cookie } = await seededServer()
+    const mine = await userBehind(base, cookie)
+    expect((await put(base, cookie, { ...mine, displayName: 'João' })).status).toBe(204)
+    expect((await userBehind(base, cookie)).displayName).toBe('João')
+
+    // The old name stops working and the new one starts, which is the whole point of the rule below.
+    const old = await fetch(`${base}/api/login`, { method: 'POST', body: JSON.stringify({ displayName: 'You', password: PASSWORD }) })
+    expect(old.status).toBe(401)
+    const now = await fetch(`${base}/api/login`, { method: 'POST', body: JSON.stringify({ displayName: 'João', password: PASSWORD }) })
+    expect(now.status).toBe(200)
+  })
+
+  it("refuses a name another account already has, rather than leaving login two rows to choose from", async () => {
+    const { base, cookie } = await seededServer()
+    const otherCookie = await secondUser(base, cookie)
+    const ana = await userBehind(base, otherCookie)
+
+    const response = await put(base, otherCookie, { ...ana, displayName: USER.displayName })
+    expect(response.status).toBe(409)
+    expect((await userBehind(base, otherCookie)).displayName).toBe('Ana')
+  })
+
+  it('lets you save your own name unchanged — you are not a clash with yourself', async () => {
+    const { base, cookie } = await seededServer()
+    const mine = await userBehind(base, cookie)
+    expect((await put(base, cookie, { ...mine, stallThresholdDays: 30 })).status).toBe(204)
+    expect((await userBehind(base, cookie)).stallThresholdDays).toBe(30)
+  })
+
+  it('refuses a blank or whitespace-only name', async () => {
+    const { base, cookie } = await seededServer()
+    const mine = await userBehind(base, cookie)
+    expect((await put(base, cookie, { ...mine, displayName: '   ' })).status).toBe(400)
+    expect((await userBehind(base, cookie)).displayName).toBe(USER.displayName)
+  })
+
+  it('trims what it stores, so a trailing space cannot make a second "You"', async () => {
+    const { base, cookie } = await seededServer()
+    const mine = await userBehind(base, cookie)
+    expect((await put(base, cookie, { ...mine, displayName: '  João  ' })).status).toBe(204)
+    expect((await userBehind(base, cookie)).displayName).toBe('João')
+  })
+})
+
 describe('changing your own password', () => {
   it('signs the current browser back in, but invalidates every other Session', async () => {
     const { base, cookie } = await seededServer()

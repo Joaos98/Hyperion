@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { displayCurrency, type Currency, type Invite, type Position, type User } from '../../domain/index.js'
 import {
   AuthError,
@@ -19,6 +19,44 @@ import { isServerBuild } from '../store.js'
 
 const serverBuild = isServerBuild()
 const isAdmin = record.user?.isAdmin ?? false
+
+// ── display name ───────────────────────────────────────────────────────────
+/**
+ * The name you sign in with, so a rename is a credential change and gets the same
+ * explicit Save the threshold below does — not a field that commits whatever it holds
+ * as you pass through it. The server refuses a blank one and one already taken; both
+ * arrive here as the sentence it refused with.
+ */
+const displayName = ref('')
+const savingName = ref(false)
+const nameSaved = ref(false)
+const nameError = ref('')
+
+watch(
+  () => record.user?.displayName,
+  (name) => (displayName.value = name ?? ''),
+  { immediate: true },
+)
+
+const nameChanged = computed(() => {
+  const wanted = displayName.value.trim()
+  return wanted.length > 0 && wanted !== record.user?.displayName
+})
+
+async function saveDisplayName(): Promise<void> {
+  if (!record.user || !nameChanged.value) return
+  savingName.value = true
+  nameError.value = ''
+  try {
+    await saveUser({ ...record.user, displayName: displayName.value.trim() })
+    nameSaved.value = true
+  } catch (cause) {
+    nameError.value = cause instanceof Error ? cause.message : String(cause)
+    displayName.value = record.user.displayName
+  } finally {
+    savingName.value = false
+  }
+}
 
 // ── stall threshold (CONTEXT.md § Stall Threshold) ──────────────────────────
 /**
@@ -446,6 +484,25 @@ onMounted(() => {
           <span v-if="isAdmin" class="tick">ADMIN</span>
         </p>
 
+        <div class="actions">
+          <label class="unit" for="display-name">Display name</label>
+          <input
+            id="display-name"
+            v-model="displayName"
+            type="text"
+            class="name-input"
+            autocomplete="username"
+            @input="nameSaved = false"
+            @keyup.enter="saveDisplayName"
+          />
+          <button class="ghost" :disabled="!nameChanged || savingName" @click="saveDisplayName">
+            {{ savingName ? 'Saving…' : 'Save' }}
+          </button>
+          <span v-if="nameSaved && !nameChanged && !savingName" class="unit saved">Saved</span>
+        </div>
+        <p v-if="nameError" class="error">{{ nameError }}</p>
+        <p class="note">This is what you sign in with, so changing it changes your login.</p>
+
         <form class="form" @submit.prevent="submitChangePassword">
           <label>Current password <input v-model="currentPassword" type="password" required autocomplete="current-password" /></label>
           <label>New password <input v-model="newPassword" type="password" required autocomplete="new-password" /></label>
@@ -679,6 +736,19 @@ h3 {
   font-size: 13.5px;
   font-family: var(--sans);
   width: 72px;
+}
+
+.name-input {
+  background: var(--page);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-control);
+  padding: 7px 10px;
+  color: var(--text);
+  font-size: 13.5px;
+  font-family: var(--sans);
+  min-width: 0;
+  flex: 1;
+  max-width: 260px;
 }
 
 .unit {

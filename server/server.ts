@@ -260,7 +260,16 @@ async function route(
     const existing = await store.loadUserRecord(userId)
     if (!existing) return send(response, 401, { error: 'Sign in first' })
     const sent = await asked<User>(request, 'user')
-    await store.writeUser({ ...sent, id: userId, isAdmin: existing.user.isAdmin })
+    // A display name is what you sign in with, so this route has to hold the same two
+    // rules `/api/register` holds: it cannot be blank, and it cannot be somebody else's.
+    // Without the second, renaming yourself onto another account's name would leave
+    // `findUserByDisplayName` — which login resolves through — with two rows to choose
+    // from and one of you unable to sign in.
+    const displayName = sent.displayName?.trim()
+    if (!displayName) return send(response, 400, { error: 'A display name is required' })
+    const clash = await auth.findUserByDisplayName(displayName)
+    if (clash && clash.id !== userId) return send(response, 409, { error: `"${displayName}" is already taken` })
+    await store.writeUser({ ...sent, id: userId, isAdmin: existing.user.isAdmin, displayName })
     return send(response, 204)
   }
 
